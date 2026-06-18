@@ -131,6 +131,101 @@ def _find_get_params(html: str) -> list[str]:
 
 
 # --------------------------------------------------------------------------- #
+# HTTP Enumeration Engine — safe resource discovery
+# --------------------------------------------------------------------------- #
+ENUMERATION_PATHS = [
+    "/robots.txt",
+    "/sitemap.xml",
+    "/sitemap_index.xml",
+    "/security.txt",
+    "/.well-known/security.txt",
+    "/humans.txt",
+    "/crossdomain.xml",
+    "/clientaccesspolicy.xml",
+]
+
+
+def http_enumerate(target: str) -> dict:
+    """Safely enumerate common web resources and extract page structure.
+
+    Checks robots.txt, sitemap.xml, security.txt and other standard
+    discovery files. Also extracts links, scripts, forms, and inputs
+    from the main page. No exploitation.
+    """
+    result: dict = {
+        "target": target,
+        "discovered_files": {},
+        "page_analysis": {
+            "links": [],
+            "scripts": [],
+            "forms": [],
+            "inputs": [],
+            "params": [],
+        },
+    }
+
+    # Check discovery files
+    for path in ENUMERATION_PATHS:
+        body = _fetch_body(target, path)
+        if body and len(body) > 10:
+            result["discovered_files"][path] = {
+                "size": len(body),
+                "lines": body.count("\n") + 1,
+                "preview": body[:200].strip(),
+            }
+
+    # Analyze main page
+    body = _fetch_body(target)
+    if body:
+        result["page_analysis"]["links"] = _find_links(body)
+        result["page_analysis"]["scripts"] = _find_scripts(body)
+        result["page_analysis"]["inputs"] = _find_inputs(body)
+        result["page_analysis"]["params"] = _find_get_params(body)
+
+        forms = _parse_forms(body)
+        result["page_analysis"]["forms"] = [
+            {
+                "method": f.method,
+                "action": f.action,
+                "inputs": f.inputs,
+                "hidden_fields": f.hidden_fields,
+                "has_token": f.has_token,
+            }
+            for f in forms
+        ]
+
+    return result
+
+
+# --------------------------------------------------------------------------- #
+# Form Analyzer — extract structured form data
+# --------------------------------------------------------------------------- #
+def analyze_forms(target: str) -> list[dict]:
+    """Extract and analyze all HTML forms from the target page.
+
+    Returns structured data with method, action, inputs, hidden fields,
+    and CSRF token detection for each form found.
+    """
+    body = _fetch_body(target)
+    if not body:
+        return []
+
+    forms = _parse_forms(body)
+    return [
+        {
+            "method": f.method,
+            "action": f.action,
+            "inputs": f.inputs,
+            "hidden_fields": f.hidden_fields,
+            "has_token": f.has_token,
+            "input_count": len(f.inputs),
+            "token_protected": f.has_token,
+        }
+        for f in forms
+    ]
+
+
+# --------------------------------------------------------------------------- #
 # A01 – Broken Access Control Indicators
 # --------------------------------------------------------------------------- #
 ADMIN_PATHS = [

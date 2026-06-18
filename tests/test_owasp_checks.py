@@ -653,8 +653,10 @@ class TestOWASPEngine:
         assert "risk_level" in report
         assert "profile" in report
 
-    def test_analyze_project_persists_files(self, tmp_path: Path):
+    @patch("ghostmirror.modules.owasp.checks._request")
+    def test_analyze_project_persists_files(self, mock_request, tmp_path: Path):
         """Verify engine creates output files."""
+        mock_request.return_value = (200, {}, "")
         findings_dir = tmp_path / "findings"
         findings_dir.mkdir(parents=True)
         profiles_dir = tmp_path / "profiles"
@@ -664,7 +666,7 @@ class TestOWASPEngine:
         engine._save_outputs(
             tmp_path,
             MagicMock(
-                target="test.com",
+                target="https://test.com",
                 categories=["A01"],
                 findings=[],
                 risk_score=0,
@@ -672,7 +674,7 @@ class TestOWASPEngine:
                 recommendations=[],
                 scan_timestamp="2024-01-01T00:00:00",
                 model_dump=lambda mode: {
-                    "target": "test.com",
+                    "target": "https://test.com",
                     "categories": ["A01"],
                     "findings": [],
                     "risk_score": 0,

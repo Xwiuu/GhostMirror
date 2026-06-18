@@ -1,6 +1,6 @@
 # GhostMirror
 
-**Internal Pentest Automation Platform** — v1.0-alpha (Sprint 10)
+**Internal Pentest Automation Platform** — v1.0-alpha (Sprint 11)
 
 GhostMirror is an **internal** platform used exclusively by our software house for
 **authorized** security audits, attack-surface mapping, security assessments and
@@ -24,6 +24,7 @@ categories are disabled by default and must be opted into deliberately.
 - Project lifecycle management (create, list, open, validate)
 - Pydantic-validated scope system (`scope.yaml`)
 - Modular scanner framework (headers, SSL/TLS, Nmap, fingerprint, Nuclei)
+- **OWASP Top 10 Light Engine** — safe, read-only OWASP assessment (A01–A10)
 - Technology & CVE intelligence engines
 - Full scan orchestration (Lite, Standard, Deep profiles)
 - Multi-format report generation (HTML, Markdown, PDF)
@@ -316,8 +317,8 @@ ghostmirror status --project <slug>
 ### ghostmirror full-scan
 Orchestrated multi-scanner pipeline:
 - `lite` — headers + SSL
-- `standard` — headers + SSL + Nmap + fingerprint
-- `deep` — headers + SSL + Nmap + fingerprint + Nuclei
+- `standard` — headers + SSL + Nmap + fingerprint + tech/CVE intelligence + Nuclei + OWASP
+- `deep` — headers + SSL + Nmap + fingerprint + tech/CVE intelligence + Nuclei + OWASP
 
 ```bash
 ghostmirror full-scan --project <slug> --profile standard
@@ -346,4 +347,4 @@ ghostmirror report generate --project <slug> --format pdf
 | 8 | Nuclei smart integration | ✅ |
 | 9 | Interactive menu + full scan + reporting | ✅ |
 | **10** | **Platform consolidation: doctor, health-check, status, logging, error handling** | ✅ |
-| **11** | **OWASP Top 10 Light Engine (safe, read-only checks)** | 🚧 |
+| **11** | **OWASP Top 10 Light Engine (safe, read-only checks)** | ✅ |

@@ -14,14 +14,9 @@
 | 8 | Nuclei smart integration | ✅ |
 | 9 | Interactive menu + full scan + reporting | ✅ |
 | 10 | Platform consolidation: doctor, health-check, status, logging, error handling | ✅ |
+| 11 | OWASP Top 10 Light Engine (safe, read-only assessment) | ✅ |
 
 ## Upcoming Sprints
-
-### Sprint 11 — OWASP Top 10 Light Engine
-- Safe, non-exploitative OWASP Top 10 assessment (A01–A10)
-- Read-only HTTP checks (HEAD/GET only, no payloads)
-- Per-category scoring and recommendations
-- Integrated into pipeline and reporting
 
 ### Sprint 12 — Rust Engine
 - High-performance scanning via Rust native modules

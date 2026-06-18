@@ -74,5 +74,15 @@ All notable changes to GhostMirror are documented here.
 
 ### Full Scan Orchestration
 - Pipeline engine: sequential multi-scanner runs
-- Three profiles: `lite` (headers + SSL), `standard` (+ Nmap + fingerprint), `deep` (+ Nuclei)
+- Three profiles: `lite` (headers + SSL), `standard` (+ Nmap + fingerprint + tech/CVE + Nuclei + OWASP), `deep` (+ Nuclei + OWASP)
 - `full-scan` CLI command with progress reporting
+
+### OWASP Top 10 Light Engine (Sprint 11)
+- Safe, non-exploitative OWASP Top 10 assessment (A01–A10)
+- HTTP enumeration engine: robots.txt, sitemap.xml, security.txt, links, scripts, forms
+- Form analyzer: method, action, inputs, hidden fields, CSRF token detection
+- Per-category scoring (0–100) and risk classification (LOW/MEDIUM/HIGH/CRITICAL)
+- Evidence output: `findings/owasp_findings.json`, `profiles/owasp_profile.json`, `evidence/owasp/*.json`
+- CLI command: `scan owasp` (interactive + non-interactive)
+- Full integration with reporting engine (HTML/MD sections + blended scoring)
+- Full integration with standard/deep scan pipeline

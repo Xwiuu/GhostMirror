@@ -10,6 +10,7 @@ from ghostmirror.core.logger import get_logger
 from ghostmirror.models.owasp_finding import OWASPCategory, OWASPFinding
 from ghostmirror.models.owasp_profile import OWASPProfile
 from ghostmirror.modules.owasp.checks import (
+    analyze_forms,
     check_admin_endpoints,
     check_auth_indicators,
     check_cryptographic_failures,
@@ -20,6 +21,7 @@ from ghostmirror.modules.owasp.checks import (
     check_misconfigurations,
     check_ssrf_surface,
     check_vulnerable_components,
+    http_enumerate,
 )
 from ghostmirror.modules.owasp.recommendations import OWASPRecommendationEngine
 
@@ -251,26 +253,72 @@ class OWASPEngine:
                 ensure_ascii=False,
             )
 
-        # Save evidence files
-        self._save_enumeration_evidence(evidence_dir, profile)
+        # Save evidence files (wrapped individually for resilience)
+        try:
+            self._save_enumeration_evidence(evidence_dir, profile)
+        except Exception as exc:
+            logger.warning("Failed to save enumeration evidence: {}", exc)
+
+        try:
+            self._save_forms_evidence(evidence_dir, profile)
+        except Exception as exc:
+            logger.warning("Failed to save forms evidence: {}", exc)
+
+        try:
+            self._save_headers_evidence(evidence_dir, profile)
+        except Exception as exc:
+            logger.warning("Failed to save headers evidence: {}", exc)
+
         self._save_summary_counts(findings_dir, findings, len(profile.categories))
 
     def _save_enumeration_evidence(
         self, evidence_dir: Path, profile: OWASPProfile
     ) -> None:
-        """Save evidence/enumeration.json with basic scan metadata."""
-        enum_data = {
-            "target": profile.target,
-            "scan_timestamp": profile.scan_timestamp,
-            "categories_checked": list(OWASPCategory),
-            "total_findings": len(profile.findings),
-            "risk_score": profile.risk_score,
-            "risk_level": profile.risk_level,
-        }
+        """Save evidence/enumeration.json with full HTTP enumeration data."""
+        enum_data = http_enumerate(profile.target)
+        enum_data["scan_timestamp"] = profile.scan_timestamp
+        enum_data["categories_checked"] = [c.value for c in OWASPCategory]
+        enum_data["total_findings"] = len(profile.findings)
+        enum_data["risk_score"] = profile.risk_score
+        enum_data["risk_level"] = profile.risk_level
         with open(
             evidence_dir / "enumeration.json", "w", encoding="utf-8"
         ) as f:
             json.dump(enum_data, f, indent=2, ensure_ascii=False)
+
+    def _save_forms_evidence(
+        self, evidence_dir: Path, profile: OWASPProfile
+    ) -> None:
+        """Save evidence/forms.json with structured form analysis."""
+        forms_data = analyze_forms(profile.target)
+        output = {
+            "target": profile.target,
+            "scan_timestamp": profile.scan_timestamp,
+            "total_forms": len(forms_data),
+            "forms": forms_data,
+        }
+        with open(
+            evidence_dir / "forms.json", "w", encoding="utf-8"
+        ) as f:
+            json.dump(output, f, indent=2, ensure_ascii=False)
+
+    def _save_headers_evidence(
+        self, evidence_dir: Path, profile: OWASPProfile
+    ) -> None:
+        """Save evidence/headers.json with HTTP security headers analysis."""
+        from ghostmirror.modules.owasp.checks import _request
+
+        _, headers, _ = _request(profile.target, "/", method="GET")
+        output = {
+            "target": profile.target,
+            "scan_timestamp": profile.scan_timestamp,
+            "headers": dict(sorted(headers.items())) if headers else {},
+            "total_headers": len(headers),
+        }
+        with open(
+            evidence_dir / "headers.json", "w", encoding="utf-8"
+        ) as f:
+            json.dump(output, f, indent=2, ensure_ascii=False)
 
     def _save_summary_counts(
         self,

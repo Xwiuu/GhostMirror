@@ -72,3 +72,14 @@
 - Enhanced error handling (structured hierarchy)
 - CLI help refinements and exit codes
 - 226 tests, 0 failures
+
+## Sprint 11 — OWASP Top 10 Light Engine
+- Safe, non-exploitative OWASP Top 10 assessment (A01–A10)
+- HTTP enumeration engine (robots.txt, sitemap.xml, security.txt, links, scripts, forms)
+- Form analyzer with CSRF token detection
+- Per-category findings and scoring (0–100)
+- Evidence output to `evidence/owasp/`
+- CLI command: `scan owasp`
+- Full integration with reporting engine (HTML/MD sections + blended scoring)
+- Full integration with standard/deep scan pipeline
+- 10 category checks (Broken Access Control, Cryptographic Failures, Injection, Insecure Design, Misconfiguration, Vulnerable Components, Authentication, Integrity, Logging, SSRF)
