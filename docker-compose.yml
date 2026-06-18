@@ -1,0 +1,19 @@
+services:
+  ghostmirror:
+    build: .
+    image: ghostmirror:1.0-alpha
+    container_name: ghostmirror
+    environment:
+      - GHOSTMIRROR_HOME=/app
+    volumes:
+      - ./projects:/app/projects
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+      - ./config:/app/config
+    # Keep STDIN/TTY open so the interactive menu works with
+    # `docker compose run --rm ghostmirror interactive`.
+    stdin_open: true
+    tty: true
+    # Default command for `docker compose up`: prints the banner/version and
+    # exits cleanly, proving the environment starts without errors.
+    command: ["version"]

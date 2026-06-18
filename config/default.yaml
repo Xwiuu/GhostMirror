@@ -1,0 +1,63 @@
+app:
+  name: GhostMirror
+  version: 1.0-alpha
+  build: 2026.06.18
+  environment: development
+
+paths:
+  projects: ./projects
+  logs: ./logs
+  reports: ./reports
+  findings: findings
+  profiles: profiles
+  evidence: evidence
+  execution: execution
+
+timeouts:
+  nmap: 600.0
+  whatweb: 60.0
+  nuclei: 900.0
+  ssl: 30.0
+  headers: 30.0
+
+rate_limits:
+  nmap_threads: 10
+  nuclei_concurrency: 50
+
+profiles:
+  lite:
+    - headers
+    - ssl
+    - nmap
+    - fingerprint
+    - report
+  standard:
+    - headers
+    - ssl
+    - nmap
+    - fingerprint
+    - technology_intelligence
+    - cve_intelligence
+    - nuclei
+    - owasp
+    - report
+  deep:
+    - headers
+    - ssl
+    - nmap
+    - fingerprint
+    - technology_intelligence
+    - cve_intelligence
+    - nuclei
+    - owasp
+    - report
+
+reporting:
+  formats:
+    - html
+    - md
+    - pdf
+
+logging:
+  file_level: INFO
+  console_level: WARNING

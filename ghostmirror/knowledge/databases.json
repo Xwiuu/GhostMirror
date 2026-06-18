@@ -1,0 +1,62 @@
+{
+  "MySQL": {
+    "category": "DATABASE",
+    "risk_level": "MEDIUM",
+    "attack_surface": ["database_service"],
+    "recommended_scans": [
+      "port_scan"
+    ],
+    "common_exposures": [
+      "unauthenticated_access",
+      "weak_credentials"
+    ]
+  },
+  "PostgreSQL": {
+    "category": "DATABASE",
+    "risk_level": "LOW",
+    "attack_surface": ["database_service"],
+    "recommended_scans": [
+      "port_scan"
+    ],
+    "common_exposures": [
+      "misconfiguration",
+      "weak_credentials"
+    ]
+  },
+  "MongoDB": {
+    "category": "DATABASE",
+    "risk_level": "HIGH",
+    "attack_surface": ["database_service"],
+    "recommended_scans": [
+      "port_scan"
+    ],
+    "common_exposures": [
+      "no_auth_exposure",
+      "unprotected_panel"
+    ]
+  },
+  "Redis": {
+    "category": "DATABASE",
+    "risk_level": "HIGH",
+    "attack_surface": ["database_service"],
+    "recommended_scans": [
+      "redis_exposure_check"
+    ],
+    "common_exposures": [
+      "no_auth_exposure",
+      "rce_via_redis"
+    ]
+  },
+  "MariaDB": {
+    "category": "DATABASE",
+    "risk_level": "MEDIUM",
+    "attack_surface": ["database_service"],
+    "recommended_scans": [
+      "port_scan"
+    ],
+    "common_exposures": [
+      "unauthenticated_access",
+      "weak_credentials"
+    ]
+  }
+}

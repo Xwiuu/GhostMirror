@@ -1,0 +1,68 @@
+{
+  "Apache": {
+    "category": "WEB SERVER",
+    "risk_level": "MEDIUM",
+    "attack_surface": ["web_server"],
+    "recommended_scans": [
+      "nuclei_apache",
+      "ssl_scan"
+    ],
+    "common_exposures": [
+      "directory_listing",
+      "version_disclosure"
+    ]
+  },
+  "Nginx": {
+    "category": "WEB SERVER",
+    "risk_level": "LOW",
+    "attack_surface": ["web_server"],
+    "recommended_scans": [
+      "nuclei_nginx",
+      "ssl_scan"
+    ],
+    "common_exposures": [
+      "misconfiguration",
+      "alias_traversal",
+      "version_disclosure"
+    ]
+  },
+  "LiteSpeed": {
+    "category": "WEB SERVER",
+    "risk_level": "LOW",
+    "attack_surface": ["web_server"],
+    "recommended_scans": [
+      "ssl_scan"
+    ],
+    "common_exposures": [
+      "version_disclosure"
+    ]
+  },
+  "IIS": {
+    "category": "WEB SERVER",
+    "risk_level": "MEDIUM",
+    "attack_surface": ["web_server"],
+    "recommended_scans": [
+      "nuclei_iis",
+      "ssl_scan"
+    ],
+    "common_exposures": [
+      "short_name_disclosure",
+      "auth_bypass",
+      "version_disclosure"
+    ]
+  },
+  "Tomcat": {
+    "category": "WEB SERVER",
+    "risk_level": "HIGH",
+    "attack_surface": ["web_server", "admin_panel"],
+    "recommended_scans": [
+      "nuclei_tomcat",
+      "ssl_scan"
+    ],
+    "common_exposures": [
+      "manager_leak",
+      "weak_credentials",
+      "version_disclosure"
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "default_operator": "==",
+  "operators_supported": ["<", "<=", ">", ">=", "==", "range:"],
+  "product_rules": {
+    "OpenSSH": {
+      "strip_suffixes": ["p1", "p2", "p3", "p4"],
+      "regex": "\\d+\\.\\d+(p\\d+)?"
+    },
+    "Apache": {
+      "strip_suffixes": ["-deb", "-ubuntu", "-redhat"],
+      "regex": "\\d+\\.\\d+\\.\\d+"
+    }
+  }
+}

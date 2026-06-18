@@ -1,0 +1,100 @@
+{
+  "Laravel": {
+    "category": "BACKEND FRAMEWORK",
+    "risk_level": "LOW",
+    "attack_surface": ["backend_framework"],
+    "recommended_scans": [
+      "laravel_security_profile",
+      "debug_check",
+      ".env_check",
+      "laravel_nuclei_templates"
+    ],
+    "common_exposures": [
+      "debug_mode_enabled",
+      "env_exposure",
+      "cve_exploitation"
+    ]
+  },
+  "Django": {
+    "category": "BACKEND FRAMEWORK",
+    "risk_level": "LOW",
+    "attack_surface": ["backend_framework"],
+    "recommended_scans": [
+      "django_debug_mode_check"
+    ],
+    "common_exposures": [
+      "debug_mode_enabled",
+      "allowed_hosts_misconfiguration"
+    ]
+  },
+  "Flask": {
+    "category": "BACKEND FRAMEWORK",
+    "risk_level": "MEDIUM",
+    "attack_surface": ["backend_framework"],
+    "recommended_scans": [
+      "flask_debug_check"
+    ],
+    "common_exposures": [
+      "debug_mode_enabled",
+      "ssti"
+    ]
+  },
+  "FastAPI": {
+    "category": "BACKEND FRAMEWORK",
+    "risk_level": "LOW",
+    "attack_surface": ["backend_framework", "api_docs"],
+    "recommended_scans": [
+      "fastapi_docs_check"
+    ],
+    "common_exposures": [
+      "interactive_docs_exposure"
+    ]
+  },
+  "Express": {
+    "category": "BACKEND FRAMEWORK",
+    "risk_level": "LOW",
+    "attack_surface": ["backend_framework"],
+    "recommended_scans": [
+      "express_security_headers"
+    ],
+    "common_exposures": [
+      "x_powered_by_header",
+      "security_headers_missing"
+    ]
+  },
+  "NestJS": {
+    "category": "BACKEND FRAMEWORK",
+    "risk_level": "LOW",
+    "attack_surface": ["backend_framework"],
+    "recommended_scans": [
+      "nestjs_docs_check"
+    ],
+    "common_exposures": [
+      "cors_misconfiguration"
+    ]
+  },
+  "Spring": {
+    "category": "BACKEND FRAMEWORK",
+    "risk_level": "MEDIUM",
+    "attack_surface": ["backend_framework"],
+    "recommended_scans": [
+      "nuclei_spring_boot"
+    ],
+    "common_exposures": [
+      "actuator_exposure",
+      "spring4shell"
+    ]
+  },
+  "Rails": {
+    "category": "BACKEND FRAMEWORK",
+    "risk_level": "LOW",
+    "attack_surface": ["backend_framework"],
+    "recommended_scans": [
+      "rails_debug_check"
+    ],
+    "common_exposures": [
+      "credentials_exposure",
+      "credentials_leak"
+    ]
+  }
+}

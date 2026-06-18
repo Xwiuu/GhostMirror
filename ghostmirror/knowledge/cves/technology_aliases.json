@@ -1,0 +1,22 @@
+{
+  "apache http server": "Apache",
+  "apache httpd": "Apache",
+  "httpd": "Apache",
+  "nginx": "Nginx",
+  "wordpress": "WordPress",
+  "woocommerce": "WooCommerce",
+  "laravel": "Laravel",
+  "php": "PHP",
+  "openssh": "OpenSSH",
+  "ssh": "OpenSSH",
+  "redis": "Redis",
+  "mongodb": "MongoDB",
+  "mysql": "MySQL",
+  "postgresql": "PostgreSQL",
+  "postgres": "PostgreSQL",
+  "apache tomcat": "Tomcat",
+  "tomcat": "Tomcat",
+  "jquery": "jQuery",
+  "drupal": "Drupal",
+  "joomla": "Joomla"
+}

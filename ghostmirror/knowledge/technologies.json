@@ -1,0 +1,72 @@
+{
+  "PHP": {
+    "category": "BACKEND LANGUAGE",
+    "risk_level": "MEDIUM",
+    "attack_surface": ["backend_runtime"],
+    "recommended_scans": [
+      "php_info_check"
+    ],
+    "common_exposures": [
+      "info_disclosure",
+      "cve_exploitation"
+    ]
+  },
+  "NodeJS": {
+    "category": "BACKEND LANGUAGE",
+    "risk_level": "LOW",
+    "attack_surface": ["backend_runtime"],
+    "recommended_scans": [
+      "npm_audit"
+    ],
+    "common_exposures": [
+      "prototype_pollution",
+      "dependency_vulnerabilities"
+    ]
+  },
+  "Python": {
+    "category": "BACKEND LANGUAGE",
+    "risk_level": "LOW",
+    "attack_surface": ["backend_runtime"],
+    "recommended_scans": [
+      "safety_check"
+    ],
+    "common_exposures": [
+      "insecure_deserialization"
+    ]
+  },
+  "Java": {
+    "category": "BACKEND LANGUAGE",
+    "risk_level": "MEDIUM",
+    "attack_surface": ["backend_runtime"],
+    "recommended_scans": [
+      "nuclei_java"
+    ],
+    "common_exposures": [
+      "log4shell",
+      "deserialization"
+    ]
+  },
+  "Ruby": {
+    "category": "BACKEND LANGUAGE",
+    "risk_level": "LOW",
+    "attack_surface": ["backend_runtime"],
+    "recommended_scans": [
+      "bundler_audit"
+    ],
+    "common_exposures": [
+      "deserialization",
+      "cve_exploitation"
+    ]
+  },
+  "Go": {
+    "category": "BACKEND LANGUAGE",
+    "risk_level": "LOW",
+    "attack_surface": ["backend_runtime"],
+    "recommended_scans": [
+      "govulncheck"
+    ],
+    "common_exposures": [
+      "panic_rce"
+    ]
+  }
+}

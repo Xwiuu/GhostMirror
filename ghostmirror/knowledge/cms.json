@@ -1,0 +1,66 @@
+{
+  "WordPress": {
+    "category": "CMS",
+    "risk_level": "MEDIUM",
+    "attack_surface": ["cms", "admin_panel"],
+    "recommended_scans": [
+      "wordpress_security_profile",
+      "plugin_enumeration",
+      "theme_enumeration",
+      "wordpress_nuclei_templates"
+    ],
+    "common_exposures": [
+      "xmlrpc_enabled",
+      "directory_listing",
+      "vulnerable_plugins"
+    ]
+  },
+  "Drupal": {
+    "category": "CMS",
+    "risk_level": "MEDIUM",
+    "attack_surface": ["cms", "admin_panel"],
+    "recommended_scans": [
+      "drupal_nuclei_templates"
+    ],
+    "common_exposures": [
+      "drupalgeddon",
+      "rest_vulnerability"
+    ]
+  },
+  "Joomla": {
+    "category": "CMS",
+    "risk_level": "HIGH",
+    "attack_surface": ["cms", "admin_panel"],
+    "recommended_scans": [
+      "joomla_nuclei_templates"
+    ],
+    "common_exposures": [
+      "rce",
+      "config_disclosure"
+    ]
+  },
+  "Magento": {
+    "category": "CMS",
+    "risk_level": "HIGH",
+    "attack_surface": ["cms", "admin_panel", "payment_gateways"],
+    "recommended_scans": [
+      "magento_nuclei_templates"
+    ],
+    "common_exposures": [
+      "rce",
+      "sqli",
+      "admin_panel_exposure"
+    ]
+  },
+  "Ghost CMS": {
+    "category": "CMS",
+    "risk_level": "LOW",
+    "attack_surface": ["cms", "admin_panel"],
+    "recommended_scans": [
+      "ghost_nuclei_templates"
+    ],
+    "common_exposures": [
+      "unauthenticated_member_enumeration"
+    ]
+  }
+}

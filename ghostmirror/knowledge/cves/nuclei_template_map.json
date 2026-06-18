@@ -1,0 +1,41 @@
+{
+  "cves": {
+    "CVE-2021-41773": "http/cves/2021/CVE-2021-41773.yaml",
+    "CVE-2022-41741": "http/cves/2022/CVE-2022-41741.yaml",
+    "CVE-2022-21661": "http/cves/2022/CVE-2022-21661.yaml",
+    "CVE-2021-34646": "http/cves/2021/CVE-2021-34646.yaml",
+    "CVE-2021-3129": "http/cves/2021/CVE-2021-3129.yaml",
+    "CVE-2021-21703": "http/cves/2021/CVE-2021-21703.yaml",
+    "CVE-2024-6387": "network/ssh/CVE-2024-6387.yaml",
+    "CVE-2022-0543": "network/redis/CVE-2022-0543.yaml",
+    "CVE-2023-46256": "http/cves/2023/CVE-2023-46256.yaml",
+    "CVE-2021-22926": "network/mysql/CVE-2021-22926.yaml",
+    "CVE-2023-39417": "network/postgres/CVE-2023-39417.yaml",
+    "CVE-2020-1938": "network/tomcat/CVE-2020-1938.yaml",
+    "CVE-2020-11022": "http/cves/2020/CVE-2020-11022.yaml",
+    "CVE-2020-13621": "http/cves/2020/CVE-2020-13621.yaml",
+    "CVE-2023-23752": "http/cves/2023/CVE-2023-23752.yaml"
+  },
+  "technologies": {
+    "Apache": "http/technologies/apache/",
+    "Nginx": "http/technologies/nginx/",
+    "WordPress": "http/technologies/wordpress/",
+    "WooCommerce": "http/technologies/woocommerce/",
+    "Laravel": "http/technologies/laravel/",
+    "PHP": "http/technologies/php/",
+    "OpenSSH": "network/ssh/",
+    "Redis": "network/redis/",
+    "MongoDB": "network/mongodb/",
+    "MySQL": "network/mysql/",
+    "PostgreSQL": "network/postgres/",
+    "Tomcat": "http/technologies/tomcat/",
+    "jQuery": "http/technologies/jquery/",
+    "Drupal": "http/technologies/drupal/",
+    "Joomla": "http/technologies/joomla/"
+  },
+  "exposures": {
+    "configs": "http/exposures/configs/",
+    "databases": "network/databases/",
+    "services": "network/services/"
+  }
+}
