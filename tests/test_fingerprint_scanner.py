@@ -345,7 +345,7 @@ def test_fingerprint_scanner_not_installed(mock_whatweb_scan: MagicMock, mock_pr
     mock_whatweb_scan.side_effect = ToolNotFoundError("whatweb not found")
     
     scanner = FingerprintScanner(project_path=mock_project, target="example.com")
-    with pytest.raises(ScannerError, match="WhatWeb não está instalado"):
+    with pytest.raises(ToolNotFoundError, match="whatweb not found"):
         scanner.run()
 
 

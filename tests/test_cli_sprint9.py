@@ -89,24 +89,14 @@ def test_cli_interactive_menu_exit(monkeypatch, tmp_path: Path):
     assert "Encerrando GhostMirror. Até logo!" in result.stdout
 
 
-@patch("ghostmirror.modules.orchestrator.full_scan.FullScanOrchestrator.run")
-def test_cli_interactive_nested_navigation(mock_run, monkeypatch, tmp_path: Path):
-    """Interactive menu should support nesting and back option."""
+def test_cli_interactive_system_doctor(monkeypatch, tmp_path: Path):
+    """Interactive menu should support system > doctor navigation."""
     monkeypatch.setenv("GHOSTMIRROR_HOME", str(tmp_path))
     runner = CliRunner()
 
-    # Setup project
-    runner.invoke(app, ["create", "-c", "Acme", "-n", "Pentest", "-d", "acme.com"])
-
-    # 1. Projects submenu: list projects [2] -> back [0] -> exit [0]
-    result = runner.invoke(app, ["interactive"], input="1\n2\n0\n0\n")
-    assert result.exit_code == 0
-    assert "Projetos" in result.stdout
-    assert "acme-pentest" in result.stdout
-
-    # 2. Doctor submenu [7] -> exit [0]
+    # Sistema [6] -> Doctor [1] -> back [0] -> exit [0]
     with patch("ghostmirror.modules.platform.diagnostics.DependencyChecker.check_python_library", return_value=True):
         with patch("pathlib.Path.is_dir", return_value=True):
-            result = runner.invoke(app, ["interactive"], input="7\n0\n")
+            result = runner.invoke(app, ["interactive"], input="6\n1\n\n0\n0\n")
             assert result.exit_code == 0
             assert "GhostMirror Doctor" in result.stdout or "Encerrando GhostMirror" in result.stdout

@@ -43,6 +43,33 @@ class MarkdownReportRenderer:
         # 1. Header and Cover info
         lab_badge = "\n> **🧪 LAB TARGET** — Ambiente Controlado (GhostMirror Lab Mode)\n" if is_lab else ""
 
+        # Build module execution summary
+        timeline = collected_data.get("timeline", {})
+        steps = timeline.get("steps", [])
+        executed = [s for s in steps if s.get("status") == "completed"]
+        skipped = [s for s in steps if s.get("status") == "skipped"]
+        failed = [s for s in steps if s.get("status") == "failed"]
+        has_modules = bool(steps)
+
+        modules_md = ""
+        if has_modules:
+            modules_md += f"""
+### Resumo de Execução
+- **Executados:** {len(executed)} | **Pulados:** {len(skipped)} | **Falhas:** {len(failed)}
+
+| Módulo | Status | Duração | Findings | Erros |
+| :--- | :--- | :--- | :--- | :--- |
+"""
+            for s in steps:
+                st = s.get("status", "?")
+                dur = s.get("duration", 0)
+                fc = s.get("findings_count", s.get("findings", 0))
+                errs = "; ".join(s.get("errors", []))[:120] if s.get("errors") else "—"
+                modules_md += f"| {s.get('name', '?')} | {st} | {dur}s | {fc} | {errs} |\n"
+            modules_md += "\n---\n"
+        else:
+            modules_md = "\n*Nenhum módulo foi executado nesta varredura.*\n\n---\n"
+
         md = f"""# GHOSTMIRROR SECURITY ASSESSMENT{lab_badge}
 
 - **Projeto:** {project_name}
@@ -67,7 +94,10 @@ O score global de risco foi calculado em **{score}/100**, resultando em uma clas
 
 ---
 
-## 2. TECNOLOGIAS MAPEADAS
+## 2. MÓDULOS EXECUTADOS
+
+{modules_md}
+## 3. TECNOLOGIAS MAPEADAS
 
 Abaixo estão listadas as tecnologias identificadas durante a fase de fingerprint:
 
@@ -89,7 +119,7 @@ Abaixo estão listadas as tecnologias identificadas durante a fase de fingerprin
         md += """
 ---
 
-## 3. CVES EM POTENCIAL CORRELACIONADAS
+## 4. CVES EM POTENCIAL CORRELACIONADAS
 
 Abaixo estão listadas as vulnerabilidades conhecidas (CVEs) correlacionadas com as tecnologias identificadas:
 
@@ -114,7 +144,7 @@ Abaixo estão listadas as vulnerabilidades conhecidas (CVEs) correlacionadas com
         md += """
 ---
 
-## 4. DETALHAMENTO DE VULNERABILIDADES E EVIDÊNCIAS
+## 5. DETALHAMENTO DE VULNERABILIDADES E EVIDÊNCIAS
 
 """
         if all_findings:
@@ -140,7 +170,7 @@ Abaixo estão listadas as vulnerabilidades conhecidas (CVEs) correlacionadas com
         md += """
 ---
 
-## 5. OWASP TOP 10 ASSESSMENT
+## 6. OWASP TOP 10 ASSESSMENT
 
 """
         owasp_profile = collected_data["profiles"].get("owasp_profile") or {}
@@ -198,7 +228,7 @@ A avaliação OWASP Top 10 Light identificou **{owasp_total}** achados em **{len
             pp_dry_run = payload_profile.get("dry_run", False)
 
             md += f"""
-## 6. SAFE PAYLOAD VALIDATION
+## 7. SAFE PAYLOAD VALIDATION
 
 A validação de payloads seguros registrou **{pp_total}** payloads, dos quais **{pp_executed}** foram executados e **{pp_blocked}** bloqueados.
 
@@ -221,7 +251,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
             md += "\n---\n"
         else:
             md += """
-## 6. SAFE PAYLOAD VALIDATION
+## 7. SAFE PAYLOAD VALIDATION
 
 *Dados do Safe Payload Validation não disponíveis. Execute `ghostmirror scan payloads` para gerar.*
 
@@ -230,7 +260,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
 
         # 7. Next steps
         md += """
-## 7. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
+## 8. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
 
 1. **Fase de Mitigação:** Priorize a aplicação de patches e atualizações nas tecnologias que apresentarem CVEs de criticidade Crítica ou Alta.
 2. **Hardening de Rede:** Restrinja o acesso a portas administrativas expostas utilizando regras de firewall estritas.

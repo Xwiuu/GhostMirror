@@ -4,6 +4,27 @@ All notable changes to GhostMirror are documented here.
 
 ## v1.0-alpha — 2026-06-18
 
+### UX Hardening & Operator Experience (Sprint 14.1)
+- Reorganized interactive menu: Novo Projeto, Scan Rápido, Scan Completo (profile picker), Laboratórios, Relatórios, Sistema
+- **Quick Scan**: one-shot scan from URL input, temp project auto-deleted if zero findings
+- **Pipeline resilience**: `ToolNotFoundError` → SKIPPED step (pipeline continues); general failures → FAILED step (logged, pipeline continues)
+- **Profile rename**: `lite` → `quick` with alias support
+- **Profile descriptions**: time estimates and module lists displayed during profile selection
+- **ExecutionStatus enum**: `PENDING`, `SUCCESS`, `FAILED`, `SKIPPED`, `WARNING` with getter methods (`get_executed_modules`, `get_skipped_modules`, `get_failed_modules`)
+- **run_id**: 12-char hex UUID on every scan execution
+- **`url_normalizer.py`**: URL/host normalization utility (accepts bare domains, www, http/https)
+- **`error_handler.py`**: user-friendly Rich Panel messages for ToolNotFoundError, OutOfScopeError, ToolTimeoutError, ProjectError, ReportGenerationError, FileNotFoundError, KeyboardInterrupt — no Python tracebacks exposed
+- **`banner.py`**: `render_banner()` (full Rich Panel) and `render_compact_banner()` (one-line)
+- **`progress.py`**: `ProgressDashboard` class with live-updating Rich Layout (header, module table, elapsed time footer); `scan_progress()` context manager
+- **`doctor_fix.py`**: interactive repair mode — detects missing tools, suggests install commands, executes with user confirmation
+- **Doctor output**: cleaner icons (✓/✗/!), install suggestions table for missing tools
+- **Logging enrichment**: execution.log and scanner.log now include `run_id`, `module`, `status`, `duration`, `findings` fields from log extra context
+- **Report renderers**: new "Módulos Executados" section in HTML and MD reports with module summary cards (Executed/Skipped/Failed counts) and per-module table (module, status, duration, findings, errors)
+- **Lab health**: migrated from plain console.print to Rich Table with check name + status columns
+- **Lab status**: added URL column to status table
+- 45 new tests (url_normalizer, error_handler, progress, menu, doctor_fix, skipped_modules)
+- Documentation updated (README, CHANGELOG)
+
 ### Rust Engine Foundation (Sprint 12)
 - Native Rust workspace (`ghostmirror-rs/`) with CLI (clap) and 3 modules
 - **Port Scanner**: TCP Connect Scan, supports single port, list, range, 3s timeout, concurrent batches

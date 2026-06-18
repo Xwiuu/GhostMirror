@@ -117,49 +117,25 @@ def test_cli_interactive_exit(monkeypatch, tmp_path) -> None:
     assert "Encerrando GhostMirror" in result.stdout
 
 
-def test_cli_interactive_doctor_and_exit(monkeypatch, tmp_path) -> None:
+def test_cli_interactive_system_and_exit(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("GHOSTMIRROR_HOME", str(tmp_path))
     runner = CliRunner()
     with patch("ghostmirror.modules.platform.diagnostics.DependencyChecker.check_python_library", return_value=True):
         with patch("pathlib.Path.is_dir", return_value=True):
-            # Choice 7 runs Doctor, then next prompt gets choice 0 to exit
-            result = runner.invoke(app, ["interactive"], input="7\n0\n")
+            # Choice 6 (Sistema), Choice 1 (Doctor), then choice 0 twice to exit
+            result = runner.invoke(app, ["interactive"], input="6\n1\n\n0\n0\n")
             assert result.exit_code == 0
             assert "Encerrando GhostMirror" in result.stdout
-
-
-def test_cli_interactive_list_and_exit(monkeypatch, tmp_path) -> None:
-    monkeypatch.setenv("GHOSTMIRROR_HOME", str(tmp_path))
-    runner = CliRunner()
-    # Choice 1 (Projects), Choice 2 (list projects), then choice 0 to go back, choice 0 to exit
-    result = runner.invoke(app, ["interactive"], input="1\n2\n\n0\n0\n")
-    assert result.exit_code == 0
-    assert "Nenhum projeto encontrado" in result.stdout
-    assert "Encerrando GhostMirror" in result.stdout
 
 
 def test_cli_interactive_create_and_exit(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("GHOSTMIRROR_HOME", str(tmp_path))
     runner = CliRunner()
-    # Choice 1 (Projects), Choice 1 (create project), then prompts for details, then choice 0 to go back, choice 0 to exit
-    input_sequence = "1\n1\nAcme Corp\nMy Audit\nacme.org\nSome notes\n\n0\n0\n"
+    # Choice 1 (Novo Projeto), then fill prompts, then choice 0 to exit
+    input_sequence = "1\nAcme Corp\nMy Audit\nacme.org\nSome notes\n\n0\n"
     result = runner.invoke(app, ["interactive"], input=input_sequence)
     assert result.exit_code == 0
-    assert "Projeto criado e selecionado como ativo: acme-corp-my-audit" in result.stdout
-    assert "Encerrando GhostMirror" in result.stdout
-
-
-def test_cli_interactive_open_and_exit(monkeypatch, tmp_path) -> None:
-    monkeypatch.setenv("GHOSTMIRROR_HOME", str(tmp_path))
-    runner = CliRunner()
-    # 1. Create project
-    runner.invoke(app, ["create", "-c", "Acme Corp", "-n", "My Audit"])
-    
-    # Choice 1 (Projects), Choice 3 (open project), slug, then choice 0 to go back, choice 0 to exit
-    input_sequence = "1\n3\nacme-corp-my-audit\n\n0\n0\n"
-    result = runner.invoke(app, ["interactive"], input=input_sequence)
-    assert result.exit_code == 0
-    assert "Projeto • acme-corp-my-audit" in result.stdout
+    assert "Projeto criado: acme-corp-my-audit" in result.stdout
     assert "Encerrando GhostMirror" in result.stdout
 
 

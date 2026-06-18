@@ -3,15 +3,28 @@
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Any
+
+
+class ExecutionStatus(str, Enum):
+    """Standardised status values for pipeline steps and modules."""
+
+    PENDING = "pending"
+    SUCCESS = "completed"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+    WARNING = "warning"
 
 
 class ExecutionContext:
     """Manages the full scan execution state, tracking steps, durations, and status."""
 
     def __init__(self, project_slug: str, target: str, profile: str) -> None:
+        self.run_id: str = uuid.uuid4().hex[:12]
         self.project_slug = project_slug
         self.target = target
         self.profile = profile.lower()
@@ -58,6 +71,7 @@ class ExecutionContext:
     def to_dict(self) -> dict[str, Any]:
         """Convert context to standard dict format matching timeline expectations."""
         return {
+            "run_id": self.run_id,
             "project": self.project_slug,
             "target": self.target,
             "profile": self.profile,
@@ -67,6 +81,18 @@ class ExecutionContext:
             ),
             "steps": self.steps,
         }
+
+    def get_executed_modules(self) -> list[dict[str, Any]]:
+        """Return steps with status SUCCESS."""
+        return [s for s in self.steps if s["status"] == ExecutionStatus.SUCCESS.value]
+
+    def get_skipped_modules(self) -> list[dict[str, Any]]:
+        """Return steps with status SKIPPED."""
+        return [s for s in self.steps if s["status"] == ExecutionStatus.SKIPPED.value]
+
+    def get_failed_modules(self) -> list[dict[str, Any]]:
+        """Return steps with status FAILED."""
+        return [s for s in self.steps if s["status"] == ExecutionStatus.FAILED.value]
 
     def save_timeline(self, project_path: Path) -> Path:
         """Persists the timeline to projects/<slug>/execution/full_scan_timeline.json."""
@@ -89,7 +115,7 @@ class _StepTracker:
         self.start_perf: float = 0.0
         self.started_at: datetime = datetime.now(timezone.utc)
         self.findings_count: int = 0
-        self.status = "failed"
+        self.status = ExecutionStatus.PENDING
         self.errors: list[str] = []
 
     def __enter__(self) -> _StepTracker:
@@ -99,25 +125,34 @@ class _StepTracker:
         self.started_at = datetime.now(timezone.utc)
         return self
 
+    def mark_skipped(self, reason: str = "") -> None:
+        """Mark the step as skipped without having to exit the context manager."""
+        self.status = ExecutionStatus.SKIPPED
+        if reason:
+            self.errors.append(reason)
+
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
         import time
 
         finished_at = datetime.now(timezone.utc)
         duration = time.perf_counter() - self.start_perf
 
-        if exc_type is None:
-            self.status = "completed"
+        # Respect status already set by _run_step (SKIPPED, FAILED)
+        if self.status not in (ExecutionStatus.PENDING,):
+            pass
+        elif exc_type is None:
+            self.status = ExecutionStatus.SUCCESS
         else:
-            self.status = "failed"
+            self.status = ExecutionStatus.FAILED
             self.errors.append(str(exc_val))
 
         self.context.add_step_result(
             name=self.name,
-            status=self.status,
+            status=self.status.value,
             started_at=self.started_at,
             finished_at=finished_at,
             duration=duration,
             findings=self.findings_count,
             errors=self.errors,
         )
-        return False  # Do not suppress exceptions; let orchestrator handle them
+        return False

@@ -12,7 +12,6 @@ from pathlib import Path
 
 from loguru import logger
 
-_FILE_FORMAT = "[{time:YYYY-MM-DD HH:mm:ss}] [{level}] {message}"
 _CONSOLE_FORMAT = (
     "<green>[{time:YYYY-MM-DD HH:mm:ss}]</green> "
     "<level>[{level}]</level> {message}"
@@ -24,6 +23,29 @@ _configured = False
 # Drop Loguru's default stderr handler at import time so no events leak in the
 # default format before :func:`setup_logger` installs the real sinks.
 logger.remove()
+
+
+def _extra_fields(record) -> str:
+    """Build a space-separated string of enriched context fields from extra."""
+    parts = []
+    for key in ("run_id", "module", "status", "duration", "findings"):
+        val = record["extra"].get(key)
+        if val is not None:
+            if key == "duration":
+                parts.append(f"duration={val}s")
+            elif key == "findings":
+                parts.append(f"findings={val}")
+            else:
+                parts.append(f"{key}={val}")
+    return " ".join(parts)
+
+
+def _file_format(record):
+    extra_str = _extra_fields(record)
+    base = "[{time:YYYY-MM-DD HH:mm:ss}] [{level}]"
+    if extra_str:
+        return f"{base} [{extra_str}] {{message}}\n"
+    return f"{base} {{message}}\n"
 
 
 def is_scanner_log(record) -> bool:
@@ -69,7 +91,7 @@ def setup_logger(
     logger.add(
         log_dir / "execution.log",
         level=file_level,
-        format=_FILE_FORMAT,
+        format=_file_format,
         filter=lambda r: r["extra"].get("channel") != "audit",
         rotation="10 MB",
         retention="30 days",
@@ -83,7 +105,7 @@ def setup_logger(
     logger.add(
         log_dir / "scanner.log",
         level=file_level,
-        format=_FILE_FORMAT,
+        format=_file_format,
         filter=lambda r: is_scanner_log(r) and r["extra"].get("channel") != "audit",
         rotation="10 MB",
         retention="30 days",
@@ -111,7 +133,7 @@ def setup_logger(
     logger.add(
         log_dir / "errors.log",
         level="ERROR",
-        format=_FILE_FORMAT,
+        format=_file_format,
         filter=lambda r: r["extra"].get("channel") != "audit",
         rotation="10 MB",
         retention="30 days",

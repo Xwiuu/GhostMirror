@@ -1,6 +1,6 @@
 # GhostMirror
 
-**Internal Pentest Automation Platform** — v1.0-alpha (Sprint 12)
+**Internal Pentest Automation Platform** — v1.0-alpha (Sprint 14.1)
 
 GhostMirror is an **internal** platform used exclusively by our software house for
 **authorized** security audits, attack-surface mapping, security assessments and
@@ -20,17 +20,21 @@ categories are disabled by default and must be opted into deliberately.
 
 ## Features
 
-- Interactive & non-interactive CLI (Typer + Rich)
+- Interactive & non-interactive CLI (Typer + Rich) with reorganized menu
+- Quick Scan — one-shot scan from URL input (auto-deletes empty projects)
 - Project lifecycle management (create, list, open, validate)
 - Pydantic-validated scope system (`scope.yaml`)
 - Modular scanner framework (headers, SSL/TLS, Nmap, fingerprint, Nuclei)
 - **OWASP Top 10 Light Engine** — safe, read-only OWASP assessment (A01–A10)
 - Technology & CVE intelligence engines
-- Full scan orchestration (Lite, Standard, Deep profiles)
-- Multi-format report generation (HTML, Markdown, PDF)
+- Full scan orchestration (Quick, Standard, Deep profiles)
+- Pipeline resilience — missing tools skip steps, errors never crash the pipeline
+- Multi-format report generation (HTML, Markdown, PDF) with module execution summary
 - **Lab Mode** — controlled vulnerable environments (Juice Shop, DVWA, WebGoat, Vuln Demo) for training and testing
-- **Platform diagnostics**: `doctor`, `health-check`, `status`
-- Centralized logging (execution, scanner, audit, errors)
+- **Platform diagnostics**: `doctor`, `health-check`, `status`, `doctor --fix`
+- Rich progress dashboard with live-updating module table
+- User-friendly error handling (no Python tracebacks exposed)
+- Centralized logging with enriched context (run_id, module, status, duration, findings)
 - Global configuration system (`config/default.yaml` + `config/settings.yaml`)
 - Dockerized environment
 
@@ -53,8 +57,12 @@ GHOSTMIRROR/
 │   └── tests/                      # Rust integration tests
 ├── ghostmirror/                    # Python package
 │   ├── app/                        # Application layer (CLI / entrypoints)
+│   │   ├── baner.py                # Rich visual banner (full + compact)
 │   │   ├── cli.py                  # Typer + Rich interactive CLI (menu + non-interactive)
-│   │   └── main.py                 # Console entrypoint (`ghostmirror`)
+│   │   ├── error_handler.py        # User-friendly error display with Rich Panels
+│   │   ├── main.py                 # Console entrypoint (`ghostmirror`)
+│   │   ├── progress.py             # Live-updating scan progress dashboard
+│   │   └── url_normalizer.py       # URL normalization utilities
 │   ├── core/                       # Use-case orchestration
 │   │   ├── config_manager.py       # Global settings
 │   │   ├── exceptions.py           # Exception hierarchy
@@ -190,15 +198,12 @@ ghostmirror
 ```
 
 Main menu options:
-1. Projetos — manage projects
-2. Scans Individuais — run individual scanners
-3. Scan Completo Autorizado — run full scan pipeline
-4. Intelligence — technology & CVE analysis
-5. Relatórios — generate reports
-6. Atualizações — update Nuclei templates
-7. Doctor — environment diagnostics
-8. Health Check — quick validation
-9. Status — project status
+1. Novo Projeto — create a project interactively
+2. Scan Rápido — quick scan from URL (temp project, auto-delete if empty)
+3. Scan Completo — run full scan pipeline with profile picker (Quick/Standard/Deep)
+4. Laboratórios — submenu: list, start, stop, status, health
+5. Relatórios — generate HTML/MD/PDF reports
+6. Sistema — submenu: Doctor, Health Check, Status, Config, Update Templates, Version
 0. Sair — exit
 
 ### Platform commands (Sprint 10)
@@ -280,12 +285,13 @@ and CLI commands.
 
 ## 📜 Logging
 
-All events are written to `logs/` in the format:
+All events are written to `logs/` with enriched context when available:
 
 ```
 [2026-06-18 10:42:01] [INFO] PROJECT_CREATED slug=empresa-x-auditoria uuid=...
-[2026-06-18 10:42:02] [INFO] FULL_SCAN_START project=... target=... profile=standard
-[2026-06-18 10:42:03] [AUDIT] event='scan iniciado' user='root' project='...' scanner='orchestrator'
+[2026-06-18 10:42:02] [INFO] [run_id=a1b2c3d4e5f6 module=orchestrator] FULL_SCAN_START ...
+[2026-06-18 10:42:03] [INFO] [run_id=a1b2c3d4e5f6 module=headers status=completed duration=3.2s findings=5] ...
+[2026-06-18 10:42:04] [AUDIT] event='scan iniciado' user='root' project='...' scanner='orchestrator'
 ```
 
 ### Log sinks
@@ -371,6 +377,14 @@ Comprehensive environment diagnostic:
 ghostmirror doctor
 ```
 
+### ghostmirror doctor --fix
+Interactive repair mode — detects missing tools, suggests install commands, and
+executes them one-by-one with user confirmation:
+
+```bash
+ghostmirror doctor --fix
+```
+
 ### ghostmirror health-check
 Quick pass/fail validation:
 - Verifies core dependencies are importable
@@ -393,10 +407,10 @@ ghostmirror status --project <slug>
 ```
 
 ### ghostmirror full-scan
-Orchestrated multi-scanner pipeline:
-- `lite` — headers + SSL
-- `standard` — headers + SSL + Nmap + fingerprint + tech/CVE intelligence + Nuclei + OWASP
-- `deep` — headers + SSL + Nmap + fingerprint + tech/CVE intelligence + Nuclei + OWASP
+Orchestrated multi-scanner pipeline (resilient — missing tools are skipped, errors never crash):
+- `quick` — headers + SSL + Nmap + fingerprint + report
+- `standard` — headers + SSL + Nmap + fingerprint + tech/CVE intelligence + Nuclei + OWASP + report
+- `deep` — headers + SSL + Nmap + fingerprint + tech/CVE intelligence + Nuclei + OWASP + payloads + report
 
 ```bash
 ghostmirror full-scan --project <slug> --profile standard
@@ -428,3 +442,4 @@ ghostmirror report generate --project <slug> --format pdf
 | **11** | **OWASP Top 10 Light Engine (safe, read-only checks)** | ✅ |
 | **12** | **Rust Engine Foundation (port scanner, banner, fingerprint, Python bridge)** | ✅ |
 | **13** | **Safe Payload Engine (non-destructive payloads, dry-run, safety policy)** | ✅ |
+| **14.1** | **UX Hardening: new interactive menu, pipeline resilience, progress dashboard, error handler, doctor --fix, logging enrichment, report module summary, lab Rich tables** | ✅ |

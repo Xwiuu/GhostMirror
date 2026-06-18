@@ -100,14 +100,9 @@ def bootstrap() -> AppContext:
 # --------------------------------------------------------------------------- #
 # Presentation helpers
 # --------------------------------------------------------------------------- #
-def render_banner() -> None:
-    banner = (
-        "╔════════════════════════════════╗\n"
-        "║        GHOSTMIRROR CLI         ║\n"
-        "║   Internal Pentest Platform    ║\n"
-        "╚════════════════════════════════╝"
-    )
-    console.print(Text(banner, style="bold cyan"))
+from ghostmirror.app.banner import render_banner, render_compact_banner, GHOST_ASCII
+from ghostmirror.app.error_handler import handle_error
+from ghostmirror.app.url_normalizer import normalize_url, normalize_host
 
 
 def _render_projects_table(handles: list[ProjectHandle]) -> None:
@@ -316,7 +311,7 @@ def _menu_projects(ctx: AppContext, state: SessionState) -> None:
         _pause()
 
 
-def _action_create_menu(ctx: AppContext, state: SessionState) -> None:
+def _action_create_menu(ctx: AppContext) -> None:
     console.print(Panel("Criar Novo Projeto", border_style="cyan"))
     client = _ask_required("Nome do cliente")
     name = _ask_required("Nome do projeto")
@@ -330,352 +325,96 @@ def _action_create_menu(ctx: AppContext, state: SessionState) -> None:
             domain=domain or None,
             notes=notes or None,
         )
-        state.active_project = handle
-        console.print(f"[bold green]Projeto criado e selecionado como ativo:[/] {handle.slug}")
+        console.print(f"[bold green]Projeto criado:[/] {handle.slug}")
         _render_project_detail(ctx, handle)
     except Exception as exc:
-        console.print(f"[bold red]Falha ao criar projeto:[/] {exc}")
+        handle_error(exc)
 
 
-def _action_open_menu(ctx: AppContext, state: SessionState) -> None:
-    handles = ctx.projects.list_projects()
-    if not handles:
-        console.print("[yellow]Nenhum projeto para abrir.[/]")
-        return
-    _render_projects_table(handles)
-    slug = Prompt.ask("Slug do projeto a abrir").strip()
+def _action_quick_scan(ctx: AppContext) -> None:
+    """Quick scan flow — just ask for a URL, run a quick scan."""
+    from datetime import datetime
+    from ghostmirror.core.scope_manager import ScopeManager
+
+    console.print(Panel("Scan Rápido", border_style="cyan", subtitle="Apenas informe a URL"))
+    url = _ask_required("Digite URL")
+
     try:
-        handle = ctx.projects.open_project(slug)
-        state.active_project = handle
-        console.print(f"[bold green]Projeto aberto:[/] {handle.slug}")
-        _render_project_detail(ctx, handle)
+        url = normalize_url(url)
+        host = normalize_host(url)
+    except ValueError as exc:
+        console.print(f"[bold red]URL inválida:[/] {exc}")
+        return
+
+    slug = f"scan-rapido-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    scope_manager = ScopeManager()
+
+    try:
+        handle = ctx.projects.create_project(
+            client="Quick Scan",
+            name=slug,
+            domain=host,
+            notes=f"Scan Rápido automático em {url}",
+        )
     except Exception as exc:
-        console.print(f"[bold red]Erro ao abrir projeto:[/] {exc}")
+        handle_error(exc)
+        return
+
+    scope_path = handle.path / "scope.yaml"
+    scope = scope_manager.load_scope(scope_path)
+    scope.targets.domains = [host]
+    scope_manager.write_scope(scope_path, scope)
+
+    console.print(f"\n[dim]Projeto temporário:[/] [green]{slug}[/]")
+    console.print(f"[dim]Alvo:[/] [cyan]{url}[/]")
+    console.print()
+
+    from ghostmirror.modules.orchestrator.full_scan import FullScanOrchestrator
+    orchestrator = FullScanOrchestrator(handle.path, host, "quick")
+    try:
+        with console.status("[bold green]Executando Scan Rápido...[/]"):
+            res = orchestrator.run()
+
+        executed = [s for s in res.get("steps", []) if s.get("status") == "completed"]
+        skipped = [s for s in res.get("steps", []) if s.get("status") == "skipped"]
+
+        console.print(f"\n[bold green]Scan Rápido concluído![/]")
+        if executed:
+            console.print(f"\n[green]✓ Módulos executados:[/] {len(executed)}")
+        if skipped:
+            console.print(f"[yellow]⤵ Módulos pulados:[/] {len(skipped)}")
+
+        total_findings = sum(s.get("findings", 0) for s in executed)
+        console.print(f"\nTotal de findings: [bold]{total_findings}[/]")
+
+        if total_findings > 0:
+            keep = Prompt.ask("\nSalvar projeto permanentemente?", choices=["s", "n"], default="s").strip().lower()
+            if keep != "s":
+                import shutil
+                shutil.rmtree(handle.path)
+                console.print("[yellow]Projeto temporário removido.[/]")
+            else:
+                console.print(f"[green]Projeto salvo:[/] {handle.slug}")
+        else:
+            import shutil
+            shutil.rmtree(handle.path)
+            console.print("[dim]Nenhum finding relevante. Projeto temporário removido.[/]")
+
+    except Exception as exc:
+        handle_error(exc, context="Scan Rápido")
 
 
-def _menu_scans(ctx: AppContext, state: SessionState) -> None:
-    """Nested interactive menu for running individual scans."""
+def _menu_labs(ctx: AppContext) -> None:
+    """Lab management menu."""
     while True:
-        if not state.active_project:
-            console.print("[yellow]Aviso: Nenhum projeto ativo para realizar varreduras.[/]")
-            _action_open_menu(ctx, state)
-            if not state.active_project:
-                return
-
         console.print()
-        render_banner()
+        render_compact_banner()
         console.print()
-        console.print(f"Projeto Ativo: [bold green]{state.active_project.slug}[/]")
-        console.print()
-        console.print("[bold]\\[1][/] Headers Security Scan")
-        console.print("[bold]\\[2][/] SSL/TLS Scan")
-        console.print("[bold]\\[3][/] Nmap Port Scan")
-        console.print("[bold]\\[4][/] Fingerprint / WhatWeb Scan")
-        console.print("[bold]\\[5][/] Nuclei Smart Scan")
-        console.print("[bold]\\[6][/] OWASP Top 10 Light Assessment")
-        console.print("[bold]\\[7][/] Safe Payload Scan")
-        console.print("[bold]\\[0][/] Voltar")
-
-        try:
-            choice = Prompt.ask(
-                "\nEscolha uma opção",
-                choices=["0", "1", "2", "3", "4", "5", "6", "7"],
-                default="0",
-                show_choices=False,
-            )
-        except (EOFError, KeyboardInterrupt):
-            return
-
-        if choice == "0":
-            return
-
-        # Load targets list from active project scope
-        scope = ctx.projects.read_scope(state.active_project)
-        console.print(
-            f"[dim]Domínios em escopo:[/] {', '.join(scope.targets.domains) or '—'}\n"
-            f"[dim]IPs em escopo:[/] {', '.join(scope.targets.ips) or '—'}"
-        )
-        default_target = state.active_project.metadata.domain or (scope.targets.domains[0] if scope.targets.domains else "")
-        target = Prompt.ask("Digite o alvo para o scan", default=default_target).strip()
-        if not target:
-            console.print("[bold red]Alvo obrigatório.[/]")
-            _pause()
-            continue
-
-        if choice == "1":
-            from ghostmirror.modules.headers.scanner import HeadersScanner
-            scanner = HeadersScanner(state.active_project.path, target, ctx.scopes)
-            try:
-                with console.status("[bold green]Executando Headers scan...[/]"):
-                    res = scanner.run()
-                console.print(f"[green]Headers Scan concluído com sucesso![/] Findings: {res.statistics.get('total', 0)}")
-            except Exception as exc:
-                console.print(f"[bold red]Erro:[/] {exc}")
-        elif choice == "2":
-            from ghostmirror.modules.ssl.scanner import SSLScanner
-            scanner = SSLScanner(state.active_project.path, target, ctx.scopes)
-            try:
-                with console.status("[bold green]Executando SSL/TLS scan...[/]"):
-                    res = scanner.run()
-                console.print(f"[green]SSL/TLS Scan concluído com sucesso![/] Findings: {res.statistics.get('total', 0)}")
-            except Exception as exc:
-                console.print(f"[bold red]Erro:[/] {exc}")
-        elif choice == "3":
-            from ghostmirror.modules.nmap.scanner import NmapScanner
-            scanner = NmapScanner(state.active_project.path, target, ctx.scopes)
-            try:
-                with console.status("[bold green]Executando Nmap scan...[/]"):
-                    res = scanner.run()
-                console.print(f"[green]Nmap Scan concluído com sucesso![/] Findings: {res.statistics.get('total', 0)}")
-            except Exception as exc:
-                console.print(f"[bold red]Erro:[/] {exc}")
-        elif choice == "4":
-            from ghostmirror.modules.fingerprint.scanner import FingerprintScanner
-            scanner = FingerprintScanner(state.active_project.path, target, ctx.scopes)
-            try:
-                with console.status("[bold green]Executando Fingerprint scan...[/]"):
-                    res = scanner.run()
-                console.print(f"[green]Fingerprint Scan concluído com sucesso![/] Findings: {res.statistics.get('total', 0)}")
-            except Exception as exc:
-                console.print(f"[bold red]Erro:[/] {exc}")
-        elif choice == "5":
-            # Nuclei smart scan needs fingerprints/cves
-            tech_profile_path = state.active_project.path / "profiles" / "technology_profile.json"
-            if not tech_profile_path.exists():
-                console.print("[yellow]Aviso: Perfil de tecnologia não encontrado. Executando Fingerprint scan automático primeiro...[/]")
-                from ghostmirror.modules.fingerprint.scanner import FingerprintScanner
-                try:
-                    FingerprintScanner(state.active_project.path, target, ctx.scopes).run()
-                except Exception as exc:
-                    console.print(f"[red]Erro no fingerprint:[/] {exc}")
-                    _pause()
-                    continue
-
-            cve_intel_path = state.active_project.path / "profiles" / "cve_intelligence.json"
-            if not cve_intel_path.exists():
-                console.print("[yellow]Aviso: CVE Intelligence não executado. Executando análise de CVEs automática primeiro...[/]")
-                from ghostmirror.modules.cve_intelligence.engine import CVEIntelligenceEngine
-                try:
-                    CVEIntelligenceEngine().analyze_project(state.active_project.path)
-                except Exception as exc:
-                    console.print(f"[red]Erro na análise de CVEs:[/] {exc}")
-                    _pause()
-                    continue
-
-            from ghostmirror.modules.nuclei.scanner import NucleiScanner
-            scanner = NucleiScanner(state.active_project.path, target, ctx.scopes, profile="standard")
-            try:
-                with console.status("[bold green]Executando Nuclei Smart Scan...[/]"):
-                    res = scanner.run()
-                console.print(f"[green]Nuclei Smart Scan concluído com sucesso![/] Findings: {res.statistics.get('total', 0)}")
-            except Exception as exc:
-                console.print(f"[bold red]Erro:[/] {exc}")
-        elif choice == "6":
-            from ghostmirror.modules.owasp.scanner import OWASPScanner
-            scanner = OWASPScanner(state.active_project.path, target, ctx.scopes)
-            try:
-                with console.status("[bold green]Executando OWASP Top 10 Light Assessment...[/]"):
-                    res = scanner.run()
-                console.print(f"[green]OWASP Assessment concluído com sucesso![/] Findings: {res.statistics.get('total', 0)}")
-                # Show OWASP summary from profile
-                owasp_profile_path = state.active_project.path / "profiles" / "owasp_profile.json"
-                if owasp_profile_path.exists():
-                    import json
-                    with open(owasp_profile_path, "r", encoding="utf-8") as f:
-                        prof = json.load(f)
-                    console.print("\nOWASP ASSESSMENT COMPLETE")
-                    console.print(f"Target:\n{prof.get('target', target)}")
-                    console.print(f"\nCategories:\n{prof.get('total_categories', 0) if 'total_categories' in prof else len(prof.get('categories', []))}")
-                    total = len(prof.get("findings", []))
-                    console.print(f"\nFindings:\n{total}")
-                    by_sev = prof.get("risk_score", 0)
-                    console.print(f"\nOWASP Risk:\n{prof.get('risk_level', 'N/A')} (Score: {by_sev})")
-            except Exception as exc:
-                console.print(f"[bold red]Erro:[/] {exc}")
-        elif choice == "7":
-            from ghostmirror.modules.payloads.engine import PayloadEngine
-            dry_run = Prompt.ask("Modo dry-run? (apenas listar, sem executar)", choices=["s", "n"], default="s").strip().lower() == "s"
-            category_str = Prompt.ask("Categoria (deixe vazio para todas)", default="").strip()
-            category = None
-            if category_str:
-                from ghostmirror.models.payload_profile import PayloadCategory
-                try:
-                    category = PayloadCategory(category_str.upper())
-                except ValueError:
-                    console.print(f"[red]Categoria inválida: {category_str}. Ignorando filtro.[/]")
-            confirm_sensitive = Prompt.ask("Confirmar payloads sensíveis manualmente?", choices=["s", "n"], default="n").strip().lower() == "s"
-            param = Prompt.ask("Parâmetro alvo (query parameter)", default="q").strip()
-            engine = PayloadEngine(
-                project_path=state.active_project.path,
-                target=target,
-                dry_run=dry_run,
-                confirm_sensitive=confirm_sensitive,
-            )
-            try:
-                with console.status("[bold green]Executando Safe Payload Scan...[/]"):
-                    report = engine.analyze_project(category=category, parameter=param)
-                console.print(f"[green]Safe Payload Scan concluído![/]")
-                console.print(f"Registered: {report['total_payloads_registered']}")
-                console.print(f"Executed: {report['payloads_executed']}")
-                console.print(f"Blocked: {report['payloads_blocked']}")
-                console.print(f"Findings: {report['findings_generated']}")
-                console.print(f"Risk: {report['risk_level']} (Score: {report['risk_score']})")
-            except Exception as exc:
-                console.print(f"[bold red]Erro:[/] {exc}")
-        _pause()
-
-
-def _menu_full_scan(ctx: AppContext, state: SessionState) -> None:
-    """Nested interactive menu for executing a full authorized scan."""
-    while True:
-        if not state.active_project:
-            console.print("[yellow]Aviso: Nenhum projeto ativo para realizar scan completo.[/]")
-            _action_open_menu(ctx, state)
-            if not state.active_project:
-                return
-
-        console.print()
-        render_banner()
-        console.print()
-        console.print(f"Projeto Ativo: [bold green]{state.active_project.slug}[/]")
-        console.print()
-        console.print("[bold]\\[1][/] Full Lite")
-        console.print("[bold]\\[2][/] Full Standard")
-        console.print("[bold]\\[3][/] Full Deep")
-        console.print("[bold]\\[0][/] Voltar")
-
-        try:
-            choice = Prompt.ask(
-                "\nEscolha uma opção",
-                choices=["0", "1", "2", "3"],
-                default="0",
-                show_choices=False,
-            )
-        except (EOFError, KeyboardInterrupt):
-            return
-
-        if choice == "0":
-            return
-
-        scope = ctx.projects.read_scope(state.active_project)
-        console.print(
-            f"[dim]Domínios em escopo:[/] {', '.join(scope.targets.domains) or '—'}\n"
-            f"[dim]IPs em escopo:[/] {', '.join(scope.targets.ips) or '—'}"
-        )
-        default_target = state.active_project.metadata.domain or (scope.targets.domains[0] if scope.targets.domains else "")
-        target = Prompt.ask("Digite o alvo para o scan completo", default=default_target).strip()
-        if not target:
-            console.print("[bold red]Alvo obrigatório.[/]")
-            _pause()
-            continue
-
-        profile = "standard"
-        if choice == "1":
-            profile = "lite"
-        elif choice == "2":
-            profile = "standard"
-        elif choice == "3":
-            profile = "deep"
-            # Deep confirmation guard
-            console.print("[bold yellow]ATENÇÃO: O perfil DEEP executará varreduras mais lentas e testes abrangentes do Nuclei no alvo.[/]")
-            confirm = Prompt.ask("Confirma a execução deste profile?", choices=["s", "n"], default="n").strip().lower()
-            if confirm != "s":
-                console.print("[yellow]Execução cancelada.[/]")
-                _pause()
-                continue
-
-        from ghostmirror.modules.orchestrator.full_scan import FullScanOrchestrator
-        orchestrator = FullScanOrchestrator(state.active_project.path, target, profile)
-        try:
-            with console.status(f"[bold green]Executando Full Scan ({profile.upper()})...[/]"):
-                res = orchestrator.run()
-            console.print(f"[bold green]Full Scan ({profile.upper()}) concluído com sucesso![/]")
-            
-            console.print("\n[bold]Linha do tempo da execução:[/]")
-            for step in res.get("steps", []):
-                status_color = "green" if step.get("status") == "completed" else "red"
-                console.print(
-                    f"- [cyan]{step.get('name')}[/]: [{status_color}]{step.get('status')}[/] "
-                    f"({step.get('duration')}s) | Findings: [magenta]{step.get('findings')}[/]"
-                )
-        except Exception as exc:
-            console.print(f"[bold red]Erro durante a orquestração do scan completo:[/] {exc}")
-        _pause()
-
-
-def _menu_intelligence(ctx: AppContext, state: SessionState) -> None:
-    """Nested interactive menu for threat intelligence mapping."""
-    while True:
-        if not state.active_project:
-            console.print("[yellow]Aviso: Nenhum projeto ativo para análises de inteligência.[/]")
-            _action_open_menu(ctx, state)
-            if not state.active_project:
-                return
-
-        console.print()
-        render_banner()
-        console.print()
-        console.print(f"Projeto Ativo: [bold green]{state.active_project.slug}[/]")
-        console.print()
-        console.print("[bold]\\[1][/] Technology Intelligence")
-        console.print("[bold]\\[2][/] CVE Intelligence")
-        console.print("[bold]\\[0][/] Voltar")
-
-        try:
-            choice = Prompt.ask(
-                "\nEscolha uma opção",
-                choices=["0", "1", "2"],
-                default="0",
-                show_choices=False,
-            )
-        except (EOFError, KeyboardInterrupt):
-            return
-
-        if choice == "0":
-            return
-
-        if choice == "1":
-            from ghostmirror.modules.technology_intelligence.engine import TechnologyIntelligenceEngine
-            engine = TechnologyIntelligenceEngine()
-            try:
-                with console.status("[bold green]Executando Technology Intelligence...[/]"):
-                    report = engine.analyze_project(state.active_project.path)
-                console.print("[green]Technology Intelligence concluído![/]")
-                console.print(f"Risco da superfície de ataque: [cyan]{report.get('risk_level')}[/] (Score: {report.get('risk_score')})")
-            except Exception as exc:
-                console.print(f"[bold red]Erro:[/] {exc}")
-        elif choice == "2":
-            from ghostmirror.modules.cve_intelligence.engine import CVEIntelligenceEngine
-            engine = CVEIntelligenceEngine()
-            try:
-                with console.status("[bold green]Executando CVE Intelligence...[/]"):
-                    report = engine.analyze_project(state.active_project.path)
-                console.print("[green]CVE Intelligence concluído![/]")
-                console.print(f"Total CVEs correlacionadas: [cyan]{report.get('total_cves')}[/]")
-            except Exception as exc:
-                console.print(f"[bold red]Erro:[/] {exc}")
-        _pause()
-
-
-def _menu_reports(ctx: AppContext, state: SessionState) -> None:
-    """Nested interactive menu for report generation."""
-    while True:
-        if not state.active_project:
-            console.print("[yellow]Aviso: Nenhum projeto ativo para exportação de relatórios.[/]")
-            _action_open_menu(ctx, state)
-            if not state.active_project:
-                return
-
-        console.print()
-        render_banner()
-        console.print()
-        console.print(f"Projeto Ativo: [bold green]{state.active_project.slug}[/]")
-        console.print()
-        console.print("[bold]\\[1][/] Gerar HTML")
-        console.print("[bold]\\[2][/] Gerar Markdown")
-        console.print("[bold]\\[3][/] Gerar PDF")
-        console.print("[bold]\\[4][/] Gerar Todos")
-        console.print("[bold]\\[5][/] Abrir pasta de relatórios")
+        console.print("[bold]\\[1][/] Listar laboratórios")
+        console.print("[bold]\\[2][/] Iniciar laboratório")
+        console.print("[bold]\\[3][/] Parar laboratório")
+        console.print("[bold]\\[4][/] Status dos laboratórios")
+        console.print("[bold]\\[5][/] Health check")
         console.print("[bold]\\[0][/] Voltar")
 
         try:
@@ -691,56 +430,98 @@ def _menu_reports(ctx: AppContext, state: SessionState) -> None:
         if choice == "0":
             return
 
-        from ghostmirror.modules.reporting.generator import ReportGenerator
-        generator = ReportGenerator(state.active_project.path)
-
         if choice == "1":
+            from ghostmirror.modules.lab import LabCatalog
+            labs = LabCatalog.get_all()
+            if not labs:
+                console.print("[yellow]Nenhum laboratório disponível.[/]")
+            else:
+                table = Table(box=box.ROUNDED, header_style="bold cyan", title="Laboratórios")
+                table.add_column("ID", style="green")
+                table.add_column("Nome")
+                table.add_column("Dificuldade")
+                table.add_column("Porta")
+                table.add_column("URL")
+                for lab in labs:
+                    diff_color = {"beginner": "green", "easy": "cyan", "medium": "yellow", "hard": "red"}.get(lab.difficulty, "white")
+                    table.add_row(lab.id, lab.name, f"[{diff_color}]{lab.difficulty}[/]", str(lab.default_port), lab.default_url)
+                console.print(table)
+
+        elif choice in ("2", "3"):
+            lab_id = Prompt.ask("ID do laboratório").strip()
+            from ghostmirror.modules.lab import LabManager
+            manager = LabManager()
             try:
-                with console.status("[bold green]Gerando relatório HTML...[/]"):
-                    res = generator.generate("html")
-                console.print(f"[green]Relatório HTML gerado em:[/] {res.get('generated_files')}")
+                if choice == "2":
+                    with console.status(f"[bold green]Iniciando {lab_id}..."):
+                        result = manager.start(lab_id)
+                    if result.get("success"):
+                        console.print(f"[bold green]✓[/] {lab_id} iniciado!")
+                    else:
+                        console.print(f"[bold red]✗[/] {result.get('stderr', 'Erro')[:300]}")
+                else:
+                    with console.status(f"[bold yellow]Parando {lab_id}..."):
+                        result = manager.stop(lab_id)
+                    if result.get("success"):
+                        console.print(f"[bold green]✓[/] {lab_id} parado!")
+                    else:
+                        console.print(f"[bold red]✗[/] {result.get('stderr', 'Erro')[:300]}")
             except Exception as exc:
-                console.print(f"[bold red]Erro:[/] {exc}")
-        elif choice == "2":
-            try:
-                with console.status("[bold green]Gerando relatório Markdown...[/]"):
-                    res = generator.generate("md")
-                console.print(f"[green]Relatório Markdown gerado em:[/] {res.get('generated_files')}")
-            except Exception as exc:
-                console.print(f"[bold red]Erro:[/] {exc}")
-        elif choice == "3":
-            try:
-                with console.status("[bold green]Gerando relatório PDF...[/]"):
-                    res = generator.generate("pdf")
-                console.print(f"[green]Relatório PDF gerado em:[/] {res.get('generated_files')}")
-            except Exception as exc:
-                console.print(f"[bold red]Erro:[/] {exc}")
+                handle_error(exc)
+
         elif choice == "4":
-            try:
-                with console.status("[bold green]Gerando relatórios...[/]"):
-                    res = generator.generate("all")
-                console.print(f"[green]Todos os relatórios gerados em:[/] {res.get('generated_files')}")
-            except Exception as exc:
-                console.print(f"[bold red]Erro:[/] {exc}")
+            from ghostmirror.modules.lab import LabManager
+            manager = LabManager()
+            entries = manager.status_summary()
+            if not entries:
+                console.print("[yellow]Nenhum laboratório.[/]")
+            else:
+                table = Table(box=box.ROUNDED, header_style="bold cyan", title="Status dos Laboratórios")
+                table.add_column("ID", style="green")
+                table.add_column("Nome")
+                table.add_column("Status")
+                table.add_column("Porta")
+                table.add_column("URL")
+                for e in entries:
+                    status = "[green]✓ Rodando[/]" if e.get("running") else "[dim]Parado[/]"
+                    table.add_row(e["id"], e["name"], status, str(e.get("port", "—")), e.get("url", "—"))
+                console.print(table)
+
         elif choice == "5":
-            reports_dir = state.active_project.path / "reports"
-            console.print(f"[bold green]Caminho da pasta de relatórios:[/] {reports_dir.absolute()}")
+            lab_id = Prompt.ask("ID do laboratório").strip()
+            from ghostmirror.modules.lab import LabManager
+            manager = LabManager()
+            try:
+                health = manager.health(lab_id)
+                results = health.check_all()
+                console.print(f"\n[bold cyan]Health Check: {lab_id}[/]")
+                for check_name, passed in results.items():
+                    icon = "[green]✓[/]" if passed else "[red]✗[/]"
+                    console.print(f"{icon} {check_name}")
+            except Exception as exc:
+                handle_error(exc)
+
         _pause()
 
 
-def _menu_updates(ctx: AppContext, state: SessionState) -> None:
-    """Nested interactive menu for updater utilities."""
+def _menu_system(ctx: AppContext) -> None:
+    """System menu — diagnostics, configuration, updates."""
     while True:
         console.print()
-        render_banner()
+        render_compact_banner()
         console.print()
-        console.print("[bold]\\[1][/] Atualizar templates do Nuclei")
+        console.print("[bold]\\[1][/] Doctor (diagnóstico completo)")
+        console.print("[bold]\\[2][/] Health Check")
+        console.print("[bold]\\[3][/] Status do projeto")
+        console.print("[bold]\\[4][/] Configurações")
+        console.print("[bold]\\[5][/] Atualizar templates Nuclei")
+        console.print("[bold]\\[6][/] Versão")
         console.print("[bold]\\[0][/] Voltar")
 
         try:
             choice = Prompt.ask(
                 "\nEscolha uma opção",
-                choices=["0", "1"],
+                choices=["0", "1", "2", "3", "4", "5", "6"],
                 default="0",
                 show_choices=False,
             )
@@ -751,57 +532,89 @@ def _menu_updates(ctx: AppContext, state: SessionState) -> None:
             return
 
         if choice == "1":
+            DoctorEngine(ctx.config).run_doctor()
+        elif choice == "2":
+            HealthCheckEngine(ctx.config).run_health_check()
+        elif choice == "3":
+            try:
+                engine = StatusEngine(config=ctx.config, project_manager=ctx.projects)
+                status = engine.get_status()
+            except Exception as exc:
+                handle_error(exc)
+                _pause()
+                continue
+
+            if "error" in status:
+                console.print(f"[yellow]{status['error']}[/]")
+                _pause()
+                continue
+
+            console.print("[bold cyan]GhostMirror Status[/]")
+            console.print(f"Project: [green]{status.get('client', '—')} — {status.get('project', '—')}[/]")
+            console.print(f"Target: [cyan]{status.get('target', '—')}[/]")
+            console.print(f"Status: [magenta]{status.get('status', '—')}[/]")
+            if status.get("last_scan"):
+                console.print(f"Last Scan: [yellow]{status['last_scan']}[/]")
+
+            findings = status.get("findings", {})
+            total = status.get("total_findings", 0)
+            console.print(f"\nFindings: [bold]{total}[/]")
+            if total > 0:
+                console.print(f"  Critical: [bold red]{findings.get('critical', 0)}[/]")
+                console.print(f"  High:     [bold orange1]{findings.get('high', 0)}[/]")
+                console.print(f"  Medium:   [bold yellow]{findings.get('medium', 0)}[/]")
+                console.print(f"  Low:      [cyan]{findings.get('low', 0)}[/]")
+                console.print(f"  Info:     [dim]{findings.get('info', 0)}[/]")
+        elif choice == "4":
+            _render_config(ctx)
+        elif choice == "5":
             from ghostmirror.integrations.nuclei.updater import NucleiUpdater
             updater = NucleiUpdater()
             try:
-                with console.status("[bold green]Atualizando templates do Nuclei...[/]"):
+                with console.status("[bold green]Atualizando templates Nuclei..."):
                     result = updater.update_templates()
                 if result.success:
-                    console.print("[green]Templates do Nuclei atualizados com sucesso![/]")
+                    console.print("[green]Templates atualizados![/]")
                 else:
-                    console.print(f"[red]Erro ao atualizar templates: Exit Code {result.exit_code}[/]")
+                    console.print(f"[red]Erro: Exit Code {result.exit_code}[/]")
             except Exception as exc:
-                console.print(f"[bold red]Erro inesperado ao atualizar templates:[/] {exc}")
+                handle_error(exc)
+        elif choice == "6":
+            from ghostmirror.app.banner import render_banner
+            render_banner()
+            console.print(f"\nVersion: [bold green]v{__version__}[/]")
+            console.print(f"Build: [cyan]{BUILD_DATE}[/]")
+
         _pause()
 
 
 def interactive_menu(ctx: AppContext) -> None:
-    """Run the interactive Rich menu loop with nested levels and active project state."""
+    """Run the new simplified interactive menu."""
 
     logger = get_logger()
     logger.info("CLI_MENU_OPENED")
-
-    state = SessionState()
-    
-    # Try auto-opening the first project if only one exists for ease of use
-    projects = ctx.projects.list_projects()
-    if len(projects) == 1:
-        state.active_project = projects[0]
 
     while True:
         console.print()
         render_banner()
         console.print()
-        if state.active_project:
-            console.print(f"Projeto Ativo: [bold green]{state.active_project.slug}[/]")
-        else:
-            console.print("Projeto Ativo: [yellow]Nenhum[/]")
+        console.print(" " + "━" * 40)
         console.print()
-        console.print("[bold]\\[1][/] Projetos")
-        console.print("[bold]\\[2][/] Scans Individuais")
-        console.print("[bold]\\[3][/] Scan Completo Autorizado")
-        console.print("[bold]\\[4][/] Intelligence")
+        console.print("[bold]\\[1][/] Novo Projeto")
+        console.print("[bold]\\[2][/] Scan Rápido")
+        console.print("[bold]\\[3][/] Scan Completo")
+        console.print("[bold]\\[4][/] Laboratórios")
         console.print("[bold]\\[5][/] Relatórios")
-        console.print("[bold]\\[6][/] Atualizações")
-        console.print("[bold]\\[7][/] Doctor")
-        console.print("[bold]\\[8][/] Health Check")
-        console.print("[bold]\\[9][/] Status")
+        console.print("[bold]\\[6][/] Sistema")
+        console.print()
+        console.print(" " + "━" * 40)
+        console.print()
         console.print("[bold]\\[0][/] Sair")
 
         try:
             choice = Prompt.ask(
                 "\nEscolha uma opção",
-                choices=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+                choices=["0", "1", "2", "3", "4", "5", "6"],
                 default="0",
                 show_choices=False,
             )
@@ -814,61 +627,67 @@ def interactive_menu(ctx: AppContext) -> None:
             console.print("[bold green]Encerrando GhostMirror. Até logo![/]")
             logger.info("CLI_EXIT")
             return
+
         elif choice == "1":
-            _menu_projects(ctx, state)
+            _action_create_menu(ctx)
+
         elif choice == "2":
-            _menu_scans(ctx, state)
+            _action_quick_scan(ctx)
+
         elif choice == "3":
-            _menu_full_scan(ctx, state)
-        elif choice == "4":
-            _menu_intelligence(ctx, state)
-        elif choice == "5":
-            _menu_reports(ctx, state)
-        elif choice == "6":
-            _menu_updates(ctx, state)
-        elif choice == "7":
-            engine = DoctorEngine(ctx.config)
-            engine.run_doctor()
-            _pause()
-        elif choice == "8":
-            engine = HealthCheckEngine(ctx.config)
-            engine.run_health_check()
-            _pause()
-        elif choice == "9":
+            handles = ctx.projects.list_projects()
+            if not handles:
+                console.print("[yellow]Nenhum projeto encontrado. Crie um primeiro.[/]")
+                _pause()
+                continue
+
+            _render_projects_table(handles)
+            slug = Prompt.ask("Slug do projeto").strip()
             try:
-                engine = StatusEngine(config=ctx.config, project_manager=ctx.projects)
-                status = engine.get_status(
-                    state.active_project.slug if state.active_project else None
-                )
-            except ProjectNotFoundError as exc:
+                handle = ctx.projects.open_project(slug)
+            except Exception as exc:
                 console.print(f"[bold red]Erro:[/] {exc}")
                 _pause()
                 continue
 
-            if "error" in status:
-                console.print(f"[yellow]{status['error']}[/]")
+            state = SessionState()
+            state.active_project = handle
+            _menu_full_scan(ctx, state)
+
+        elif choice == "4":
+            _menu_labs(ctx)
+
+        elif choice == "5":
+            handles = ctx.projects.list_projects()
+            if not handles:
+                console.print("[yellow]Nenhum projeto encontrado.[/]")
                 _pause()
                 continue
 
-            console.print("[bold cyan]GhostMirror Status[/]\n")
-            console.print(f"Project: [green]{status['client']} — {status['project']}[/]")
-            console.print(f"Target: [cyan]{status['target']}[/]")
-            console.print(f"Status: [magenta]{status.get('status', '—')}[/]")
-            if status.get("last_scan"):
-                console.print(f"Last Scan: [yellow]{status['last_scan']}[/]")
-            else:
-                console.print("Last Scan: [dim]Nenhum scan realizado[/]")
+            _render_projects_table(handles)
+            slug = Prompt.ask("Slug do projeto").strip()
+            try:
+                handle = ctx.projects.open_project(slug)
+            except Exception as exc:
+                console.print(f"[bold red]Erro:[/] {exc}")
+                _pause()
+                continue
 
-            findings = status.get("findings", {})
-            total = status.get("total_findings", 0)
-            console.print(f"\nFindings: [bold]{total}[/]")
-            if total > 0:
-                console.print(f"  Critical: [bold red]{findings.get('critical', 0)}[/]")
-                console.print(f"  High:     [bold orange1]{findings.get('high', 0)}[/]")
-                console.print(f"  Medium:   [bold yellow]{findings.get('medium', 0)}[/]")
-                console.print(f"  Low:      [cyan]{findings.get('low', 0)}[/]")
-                console.print(f"  Info:     [dim]{findings.get('info', 0)}[/]")
-            _pause()
+            from ghostmirror.modules.reporting.generator import ReportGenerator
+            generator = ReportGenerator(handle.path)
+
+            fmt = Prompt.ask("Formato", choices=["html", "md", "pdf", "all"], default="all").strip()
+            try:
+                with console.status(f"[bold green]Gerando relatório ({fmt.upper()})..."):
+                    res = generator.generate(fmt)
+                console.print(f"[green]Relatório gerado em:[/] {res.get('generated_files')}")
+                if res.get("risk_level"):
+                    console.print(f"Risco: [cyan]{res.get('risk_level')}[/] (Score: {res.get('score')})")
+            except Exception as exc:
+                handle_error(exc)
+
+        elif choice == "6":
+            _menu_system(ctx)
 
 
 # --------------------------------------------------------------------------- #
@@ -941,9 +760,16 @@ def cmd_version() -> None:
 
 
 @app.command("doctor", help="Executa diagnóstico completo do ambiente.")
-def cmd_doctor(ctx: typer.Context) -> None:
+def cmd_doctor(
+    ctx: typer.Context,
+    fix: bool = typer.Option(False, "--fix", help="Modo reparo assistido"),
+) -> None:
     app_ctx: AppContext = ctx.obj
     try:
+        if fix:
+            from ghostmirror.modules.platform.doctor_fix import run_doctor_fix
+            run_doctor_fix(app_ctx.config)
+            return
         engine = DoctorEngine(app_ctx.config)
         ok = engine.run_doctor()
         if not ok:
@@ -2123,9 +1949,10 @@ def cmd_lab_status() -> None:
     table.add_column("Nome")
     table.add_column("Status")
     table.add_column("Porta")
+    table.add_column("URL")
     for e in entries:
         status = "[green]✓ Rodando[/]" if e["running"] else "[dim]Parado[/]"
-        table.add_row(e["id"], e["name"], status, str(e["port"]))
+        table.add_row(e["id"], e["name"], status, str(e["port"]), e.get("url", "—"))
     console.print(table)
 
 
@@ -2138,18 +1965,28 @@ def cmd_lab_health(
     manager = LabManager()
     try:
         health: LabHealth = manager.health(lab_id)
-        results = health.check_all()
+        from ghostmirror.modules.lab.health import LabHealth
+        health_obj: LabHealth = health
+        results = health_obj.check_all()
         all_ok = all(results.values())
 
-        console.print(f"[bold cyan]Health Check: {lab_id}[/]\n")
+        table = Table(
+            box=box.ROUNDED,
+            header_style="bold cyan",
+            title=f"Health Check: {lab_id}",
+            show_header=True,
+        )
+        table.add_column("Verificação", style="cyan")
+        table.add_column("Status", justify="center")
         for check_name, passed in results.items():
-            icon = "[green]✓[/]" if passed else "[red]✗[/]"
-            console.print(f"{icon} {check_name}")
+            status = "[green]✓ OK[/]" if passed else "[red]✗ FALHA[/]"
+            table.add_row(check_name, status)
+        console.print(table)
 
         if all_ok:
-            console.print(f"\n[bold green]Health: OK[/]")
+            console.print(f"\n[bold green]✓ Health: OK[/]")
         else:
-            console.print(f"\n[bold red]Health: FALHA[/] — {sum(1 for v in results.values() if not v)} check(s) com problema")
+            console.print(f"\n[bold red]✗ Health: FALHA[/] — {sum(1 for v in results.values() if not v)} check(s) com problema")
             raise typer.Exit(code=1)
     except Exception as exc:
         console.print(f"[bold red]Erro:[/] {exc}")

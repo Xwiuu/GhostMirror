@@ -269,11 +269,9 @@ class FingerprintScanner(ScannerBase):
 
             status = "completed"
 
-        except ToolNotFoundError as exc:
-            logger.error("WHATWEB_NOT_INSTALLED error={}", exc)
-            raise ScannerError(
-                "WhatWeb não está instalado ou disponível no PATH do sistema. Por favor, instale o WhatWeb para prosseguir."
-            ) from exc
+        except ToolNotFoundError:
+            logger.warning("WHATWEB_NOT_INSTALLED — step will be skipped")
+            raise
         except ToolTimeoutError as exc:
             logger.error("WHATWEB_TIMEOUT error={}", exc)
             raise ScannerError(

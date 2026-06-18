@@ -40,7 +40,32 @@ class HTMLReportRenderer:
 
         severity_counts = {sev: len(lst) for sev, lst in findings_by_sev.items()}
 
-        # 2. Get technologies list
+        # 2. Build module execution summary table
+        timeline = collected_data.get("timeline", {})
+        steps = timeline.get("steps", [])
+        executed = [s for s in steps if s.get("status") == "completed"]
+        skipped = [s for s in steps if s.get("status") == "skipped"]
+        failed = [s for s in steps if s.get("status") == "failed"]
+        has_modules = bool(steps)
+        modules_html = ""
+        if has_modules:
+            for s in steps:
+                st = s.get("status", "?")
+                icon = "✓" if st == "completed" else ("⏭" if st == "skipped" else "✗")
+                color = "success" if st == "completed" else ("warning" if st == "skipped" else "danger")
+                dur = s.get("duration", 0)
+                fc = s.get("findings_count", s.get("findings", 0))
+                errs = "; ".join(s.get("errors", []))[:120] if s.get("errors") else "—"
+                modules_html += f"""
+                <tr>
+                    <td>{s.get("name", "?")}</td>
+                    <td><span class="mod-status mod-{color}">{icon} {st}</span></td>
+                    <td>{dur}s</td>
+                    <td>{fc}</td>
+                    <td style="font-size:0.8rem;color:var(--text-muted);">{errs}</td>
+                </tr>"""
+
+        # 3. Get technologies list
         tech_profile = collected_data["profiles"].get("technology_profile") or {}
         technologies = tech_profile.get("technologies", [])
         tech_list_html = ""
@@ -445,6 +470,27 @@ class HTMLReportRenderer:
                 background-color: transparent !important;
             }}
         }}
+        .mod-status {{
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }}
+        .mod-success {{ background-color: rgba(0,200,83,0.15); color: #00c853; }}
+        .mod-warning {{ background-color: rgba(255,193,7,0.15); color: #ffc107; }}
+        .mod-danger {{ background-color: rgba(255,77,79,0.15); color: #ff4d4f; }}
+        .mod-summary-card {{
+            display: flex; gap: 20px; margin-bottom: 20px;
+        }}
+        .mod-summary-item {{
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 15px 20px; text-align: center; flex: 1;
+        }}
+        .mod-summary-val {{
+            font-size: 1.8rem; font-weight: bold;
+        }}
         .lab-badge {{
             display: inline-block;
             padding: 4px 14px;
@@ -526,8 +572,44 @@ class HTMLReportRenderer:
             </p>
         </div>
 
+        <!-- MÓDULOS EXECUTADOS -->
+        <h3 class="section-title">2. Módulos Executados</h3>
+        <div class="card" style="text-align: left; margin-bottom: 40px;">
+""" + (f"""
+            <div class="mod-summary-card">
+                <div class="mod-summary-item">
+                    <div class="mod-summary-val" style="color: #00c853;">{len(executed)}</div>
+                    <div style="color: var(--text-muted); font-size:0.85rem;">Executados</div>
+                </div>
+                <div class="mod-summary-item">
+                    <div class="mod-summary-val" style="color: #ffc107;">{len(skipped)}</div>
+                    <div style="color: var(--text-muted); font-size:0.85rem;">Pulados</div>
+                </div>
+                <div class="mod-summary-item">
+                    <div class="mod-summary-val" style="color: #ff4d4f;">{len(failed)}</div>
+                    <div style="color: var(--text-muted); font-size:0.85rem;">Falhas</div>
+                </div>
+            </div>""" if has_modules else "") + f"""
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Módulo</th>
+                            <th>Status</th>
+                            <th>Duração</th>
+                            <th>Findings</th>
+                            <th>Erros</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {modules_html if modules_html else '<tr><td colspan="5" class="text-center text-muted">Nenhum módulo foi executado nesta varredura.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- TECNOLOGIAS DETECTADAS -->
-        <h3 class="section-title">2. Tecnologias Mapeadas</h3>
+        <h3 class="section-title">3. Tecnologias Mapeadas</h3>
         <div class="table-responsive">
             <table>
                 <thead>
@@ -544,7 +626,7 @@ class HTMLReportRenderer:
         </div>
 
         <!-- POTENCIAIS CVES -->
-        <h3 class="section-title">3. CVEs Correlacionadas</h3>
+        <h3 class="section-title">4. CVEs Correlacionadas</h3>
         <div class="table-responsive">
             <table>
                 <thead>
@@ -562,13 +644,13 @@ class HTMLReportRenderer:
         </div>
 
         <!-- VULNERABILIDADES DETALHADAS -->
-        <h3 class="section-title">4. Vulnerabilidades Confirmadas e Evidências</h3>
+        <h3 class="section-title">5. Vulnerabilidades Confirmadas e Evidências</h3>
         <div class="findings-list">
             {findings_details_html}
         </div>
 
         <!-- OWASP TOP 10 ASSESSMENT -->
-        <h3 class="section-title">5. OWASP Top 10 Assessment</h3>
+        <h3 class="section-title">6. OWASP Top 10 Assessment</h3>
         <div class="card" style="text-align: left; margin-bottom: 40px;">
 """
 
@@ -668,7 +750,7 @@ class HTMLReportRenderer:
         </div>
 
         <!-- SAFE PAYLOAD VALIDATION -->
-        <h3 class="section-title">6. Safe Payload Validation</h3>
+        <h3 class="section-title">7. Safe Payload Validation</h3>
         <div class="card">
         """
 
@@ -761,7 +843,7 @@ class HTMLReportRenderer:
         </div>
 
         <!-- RECOMENDAÇÕES E PRÓXIMOS PASSOS -->
-        <h3 class="section-title">7. Recomendações e Próximos Passos</h3>
+        <h3 class="section-title">8. Recomendações e Próximos Passos</h3>
         <div class="card" style="text-align: left;">
             <ul style="padding-left: 20px;">
                 <li style="margin-bottom: 12px;"><strong>Fase de Mitigação:</strong> Revise as configurações de servidores web e aplique patches de segurança para as tecnologias identificadas com CVEs ativas.</li>

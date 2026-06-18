@@ -80,6 +80,16 @@ class ReportCollector:
         # Aggregate all unique findings for consolidated score and display
         data["all_findings"] = self._aggregate_findings(data["findings"])
 
+        # Load execution timeline for module-level reporting
+        timeline_path = self.project_path / "execution" / "full_scan_timeline.json"
+        if timeline_path.exists():
+            try:
+                with open(timeline_path, "r", encoding="utf-8") as f:
+                    data["timeline"] = json.load(f)
+            except Exception as exc:
+                logger.warning("Failed to load timeline {}: {}", timeline_path, exc)
+                data["timeline"] = {}
+
         return data
 
     def _load_scan_result(self, name: str) -> ScanResultModel | None:
