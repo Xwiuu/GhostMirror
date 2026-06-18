@@ -1,0 +1,7 @@
+services:
+  dvwa:
+    image: vulnerables/web-dvwa:latest
+    container_name: ghostmirror-lab-dvwa
+    ports:
+      - "80:80"
+    restart: unless-stopped

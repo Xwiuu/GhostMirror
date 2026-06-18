@@ -97,3 +97,32 @@ ghostmirror scan payloads -p <slug> -t target.com --parameter search
 ```
 
 See [PAYLOAD_ENGINE_SAFETY.md](PAYLOAD_ENGINE_SAFETY.md) for full safety documentation.
+
+## Lab Mode
+
+Start, scan, and benchmark controlled vulnerable environments locally:
+
+```bash
+# List available labs
+ghostmirror lab list
+
+# Start a lab environment
+ghostmirror lab start juice-shop
+
+# Check lab health
+ghostmirror lab health juice-shop
+
+# Create a lab-scoped project
+ghostmirror lab create-project juice-shop
+
+# Run a full scan against the lab
+ghostmirror full-scan --project lab-juice-shop --profile deep
+
+# Run a benchmark (full-scan deep + metrics)
+ghostmirror lab benchmark juice-shop
+
+# Stop the lab
+ghostmirror lab stop juice-shop
+```
+
+See [LAB_MODE.md](LAB_MODE.md) for full documentation.

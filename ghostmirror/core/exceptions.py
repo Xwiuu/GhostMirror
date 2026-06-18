@@ -95,3 +95,28 @@ class ReportGenerationError(GhostMirrorError):
     """Raised when the report generation engine fails."""
 
     pass
+
+
+# Lab Mode errors
+class LabError(GhostMirrorError):
+    """Base class for lab-related failures."""
+
+    pass
+
+
+class LabNotFoundError(LabError):
+    """Raised when a lab ID is not found in the catalog."""
+
+    pass
+
+
+class LabDockerError(LabError):
+    """Raised when a Docker operation fails."""
+
+    pass
+
+
+class LabSafetyViolation(LabError):
+    """Raised when a lab operation violates safety rules."""
+
+    pass

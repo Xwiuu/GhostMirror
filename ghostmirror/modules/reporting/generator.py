@@ -75,6 +75,18 @@ class ReportGenerator:
             except Exception as exc:
                 logger.warning("Failed to load project metadata: {}", exc)
 
+        # Detect lab target from scope
+        is_lab = False
+        scope_path = self.project_path / "scope.yaml"
+        if scope_path.exists():
+            try:
+                from ghostmirror.core.scope_manager import ScopeManager
+                sm = ScopeManager()
+                scope_model = sm.load_scope(scope_path)
+                is_lab = scope_model.project.lab
+            except Exception as exc:
+                logger.warning("Failed to read scope for lab detection: {}", exc)
+
         # 3. Calculate Consolidated Score
         score, level = ReportScorer.calculate_score(
             all_findings=data["all_findings"],
@@ -96,6 +108,7 @@ class ReportGenerator:
                 score=score,
                 risk_level=level,
                 collected_data=data,
+                is_lab=is_lab,
             )
 
         if format_name in ("html", "all"):
@@ -113,6 +126,7 @@ class ReportGenerator:
                 score=score,
                 risk_level=level,
                 collected_data=data,
+                is_lab=is_lab,
             )
             md_path = self.reports_dir / "report.md"
             with open(md_path, "w", encoding="utf-8") as f:
@@ -131,6 +145,7 @@ class ReportGenerator:
                     score=score,
                     risk_level=level,
                     collected_data=data,
+                    is_lab=is_lab,
                 )
             success = PDFReportRenderer.render(html_content, pdf_path)
             if success:

@@ -116,3 +116,20 @@
 - Automatic blocking of destructive, BLOCKED, and unconfirmed payloads
 - Outputs: `findings/payload_findings.json`, `profiles/payload_profile.json`, `evidence/payloads/payload_results.json`, `evidence/payloads/sanitized_evidence.json`
 - 95%+ test coverage on payloads module
+
+## Sprint 14 — Lab Mode
+- Lab catalog with 4 environments: OWASP Juice Shop, DVWA, WebGoat, GhostMirror Vuln Demo
+- Docker Compose lifecycle management (`up`, `down`, `ps`) via `DockerRunner`
+- `LabManager`: start, stop, status, health check for lab environments
+- `LabCatalog`: registry and validation of supported vulnerable environments
+- 5-point health check: Docker, compose file, container, port, URL
+- `LabProjectFactory`: auto-creates projects with `lab: true`, localhost targets, restrictive `allowed_tests`
+- `LabSafetyGuard`: blocks any scan against public domains/IPs in lab projects
+- `LabBenchmark`: full-scan deep profile with per-step duration/findings metrics
+- CLI group: `ghostmirror lab list|start|stop|status|health|create-project|benchmark`
+- Scope model extended: `urls` field in `ScopeTargets`, `lab` flag in `ScopeProjectInfo`
+- Report badge: `LAB TARGET` in HTML and Markdown reports for lab projects
+- Vuln Demo: custom FastAPI app with 10 safe indicator endpoints
+- Doctor extended: validates lab catalog integrity and compose file presence
+- 48 unit tests (100% mocked Docker, no real containers)
+- Documentation: `docs/LAB_MODE.md`

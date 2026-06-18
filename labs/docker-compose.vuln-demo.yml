@@ -1,0 +1,10 @@
+services:
+  vuln-demo:
+    build:
+      context: ./vuln-demo
+      dockerfile: Dockerfile
+    image: ghostmirror-vuln-demo:latest
+    container_name: ghostmirror-lab-vuln-demo
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

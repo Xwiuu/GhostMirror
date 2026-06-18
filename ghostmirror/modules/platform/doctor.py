@@ -87,6 +87,17 @@ class DoctorEngine:
             console.print("[red][✗][/] Payload Engine (Módulo não disponível)")
             all_ok = False
 
+        # Lab Mode checks
+        lab_results = results.get("lab", {})
+        if lab_results.get("catalog_valid"):
+            console.print("[green][✓][/] Lab Catalog")
+        else:
+            console.print("[yellow][!][/] Lab Catalog (Alguns compose files ausentes — opcional)")
+        if lab_results.get("compose_files_present"):
+            console.print("[green][✓][/] Lab Compose Files")
+        else:
+            console.print("[yellow][!][/] Lab Compose Files (Alguns arquivos ausentes — opcional)")
+
         console.print("\nSystem Status:")
         if all_ok:
             console.print(Panel(Text("READY", style="bold green", justify="center"), border_style="green"))

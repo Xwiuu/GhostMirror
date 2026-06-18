@@ -45,6 +45,19 @@ class PlatformDiagnostics:
         ruamel_ok = DependencyChecker.check_python_library("ruamel.yaml") or DependencyChecker.check_python_library("yaml")
         weasyprint_lib_ok = DependencyChecker.check_python_library("weasyprint")
 
+        # 6. Lab catalog checks
+        lab_catalog_ok = False
+        lab_compose_files_ok = False
+        try:
+            from ghostmirror.modules.lab import LabCatalog
+
+            lab_errors = LabCatalog.validate_catalog()
+            lab_catalog_ok = len(lab_errors) == 0
+            lab_compose_checks = LabCatalog.compose_files_exist()
+            lab_compose_files_ok = all(lab_compose_checks.values())
+        except Exception:
+            pass
+
         return {
             "environment": env_info,
             "filesystem": fs_status,
@@ -55,5 +68,9 @@ class PlatformDiagnostics:
                 "loguru": loguru_ok,
                 "yaml": ruamel_ok,
                 "weasyprint": weasyprint_lib_ok,
+            },
+            "lab": {
+                "catalog_valid": lab_catalog_ok,
+                "compose_files_present": lab_compose_files_ok,
             },
         }

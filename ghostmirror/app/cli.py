@@ -2026,6 +2026,199 @@ def cmd_nuclei_update(ctx: typer.Context) -> None:
         raise typer.Exit(code=1)
 
 
+# --------------------------------------------------------------------------- #
+# Lab Mode sub-app
+# --------------------------------------------------------------------------- #
+lab_app = typer.Typer(help="Lab Mode: ambientes vulneráveis controlados.")
+app.add_typer(lab_app, name="lab")
+
+
+@lab_app.command("list", help="Lista todos os ambientes de laboratório disponíveis.")
+def cmd_lab_list() -> None:
+    """Exibe o catálogo de labs disponíveis com nome, dificuldade e porta."""
+    from ghostmirror.modules.lab import LabCatalog
+
+    labs = LabCatalog.get_all()
+    if not labs:
+        console.print("[yellow]Nenhum laboratório disponível.[/]")
+        return
+
+    table = Table(box=box.ROUNDED, header_style="bold cyan", title="Laboratórios Disponíveis")
+    table.add_column("ID", style="green")
+    table.add_column("Nome")
+    table.add_column("Dificuldade")
+    table.add_column("Porta")
+    table.add_column("URL")
+    for lab in labs:
+        diff_color = {
+            "beginner": "green",
+            "easy": "cyan",
+            "medium": "yellow",
+            "hard": "red",
+        }.get(lab.difficulty, "white")
+        table.add_row(
+            lab.id,
+            lab.name,
+            f"[{diff_color}]{lab.difficulty}[/]",
+            str(lab.default_port),
+            lab.default_url,
+        )
+    console.print(table)
+
+
+@lab_app.command("start", help="Inicia um ambiente de laboratório via Docker Compose.")
+def cmd_lab_start(
+    lab_id: str = typer.Argument(..., help="ID do laboratório (ex: juice-shop)"),
+) -> None:
+    from ghostmirror.modules.lab import LabManager
+
+    manager = LabManager()
+    try:
+        with console.status(f"[bold green]Iniciando {lab_id}...[/]"):
+            result = manager.start(lab_id)
+        if result.get("success"):
+            console.print(f"[bold green]✓[/] Laboratório [cyan]{lab_id}[/] iniciado com sucesso!")
+        else:
+            stderr = result.get("stderr", "")
+            console.print(f"[bold red]✗[/] Erro ao iniciar {lab_id}: {stderr[:300]}")
+            raise typer.Exit(code=1)
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
+@lab_app.command("stop", help="Para e remove um ambiente de laboratório.")
+def cmd_lab_stop(
+    lab_id: str = typer.Argument(..., help="ID do laboratório (ex: juice-shop)"),
+) -> None:
+    from ghostmirror.modules.lab import LabManager
+
+    manager = LabManager()
+    try:
+        with console.status(f"[bold yellow]Parando {lab_id}...[/]"):
+            result = manager.stop(lab_id)
+        if result.get("success"):
+            console.print(f"[bold green]✓[/] Laboratório [cyan]{lab_id}[/] parado com sucesso!")
+        else:
+            stderr = result.get("stderr", "")
+            console.print(f"[bold red]✗[/] Erro ao parar {lab_id}: {stderr[:300]}")
+            raise typer.Exit(code=1)
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
+@lab_app.command("status", help="Exibe o status de todos os laboratórios.")
+def cmd_lab_status() -> None:
+    from ghostmirror.modules.lab import LabManager
+
+    manager = LabManager()
+    entries = manager.status_summary()
+    if not entries:
+        console.print("[yellow]Nenhum laboratório encontrado.[/]")
+        return
+
+    table = Table(box=box.ROUNDED, header_style="bold cyan", title="Status dos Laboratórios")
+    table.add_column("ID", style="green")
+    table.add_column("Nome")
+    table.add_column("Status")
+    table.add_column("Porta")
+    for e in entries:
+        status = "[green]✓ Rodando[/]" if e["running"] else "[dim]Parado[/]"
+        table.add_row(e["id"], e["name"], status, str(e["port"]))
+    console.print(table)
+
+
+@lab_app.command("health", help="Executa verificação de saúde de 5 pontos em um laboratório.")
+def cmd_lab_health(
+    lab_id: str = typer.Argument(..., help="ID do laboratório (ex: juice-shop)"),
+) -> None:
+    from ghostmirror.modules.lab import LabManager, LabHealth
+
+    manager = LabManager()
+    try:
+        health: LabHealth = manager.health(lab_id)
+        results = health.check_all()
+        all_ok = all(results.values())
+
+        console.print(f"[bold cyan]Health Check: {lab_id}[/]\n")
+        for check_name, passed in results.items():
+            icon = "[green]✓[/]" if passed else "[red]✗[/]"
+            console.print(f"{icon} {check_name}")
+
+        if all_ok:
+            console.print(f"\n[bold green]Health: OK[/]")
+        else:
+            console.print(f"\n[bold red]Health: FALHA[/] — {sum(1 for v in results.values() if not v)} check(s) com problema")
+            raise typer.Exit(code=1)
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
+@lab_app.command("create-project", help="Cria um projeto GhostMirror para um laboratório.")
+def cmd_lab_create_project(
+    lab_id: str = typer.Argument(..., help="ID do laboratório (ex: juice-shop)"),
+) -> None:
+    from ghostmirror.modules.lab import LabManager
+
+    manager = LabManager()
+    try:
+        with console.status(f"[bold green]Criando projeto para {lab_id}...[/]"):
+            handle = manager.create_project(lab_id)
+        console.print(f"[bold green]✓[/] Projeto criado: [cyan]{handle.slug}[/]")
+        console.print(f"  Path: {handle.path}")
+        scope_path = handle.path / "scope.yaml"
+        if scope_path.exists():
+            console.print(f"  Scope: {scope_path}")
+            from ghostmirror.storage.filesystem import FileSystemStorage
+            scope_content = FileSystemStorage.read_yaml(scope_path)
+            import yaml
+            console.print(yaml.dump(scope_content, default_flow_style=False).strip())
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
+@lab_app.command("benchmark", help="Executa benchmark completo (full-scan deep) em um laboratório.")
+def cmd_lab_benchmark(
+    lab_id: str = typer.Argument(..., help="ID do laboratório (ex: juice-shop)"),
+) -> None:
+    from ghostmirror.modules.lab import LabBenchmark
+
+    benchmark = LabBenchmark()
+    try:
+        with console.status(f"[bold green]Executando benchmark em {lab_id} (deep scan)...[/]"):
+            result = benchmark.run(lab_id)
+        console.print(f"\n[bold cyan]Benchmark: {lab_id}[/]")
+        console.print(f"Projeto: [green]{result.project_slug}[/]")
+        console.print(f"Perfil: {result.profile}")
+        console.print(f"Duração total: [yellow]{result.total_duration_seconds:.2f}s[/]")
+        console.print(f"Total de findings: [yellow]{result.total_findings}[/]")
+
+        if result.steps:
+            table = Table(box=box.ROUNDED, header_style="bold cyan", title="Steps")
+            table.add_column("Step")
+            table.add_column("Duração (s)")
+            table.add_column("Findings")
+            table.add_column("Status")
+            for step in result.steps:
+                status = "[green]✓[/]" if step.status == "completed" else "[red]✗[/]"
+                table.add_row(
+                    step.step_name,
+                    f"{step.duration_seconds:.2f}",
+                    str(step.findings_count),
+                    status,
+                )
+            console.print(table)
+
+        if result.error:
+            console.print(f"[bold red]Erro durante benchmark:[/] {result.error}")
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
 
 
 

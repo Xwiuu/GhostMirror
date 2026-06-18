@@ -19,6 +19,7 @@ class HTMLReportRenderer:
         score: int,
         risk_level: str,
         collected_data: dict[str, Any],
+        is_lab: bool = False,
     ) -> str:
         """Compiles report data into a standalone visual HTML page string."""
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -444,6 +445,18 @@ class HTMLReportRenderer:
                 background-color: transparent !important;
             }}
         }}
+        .lab-badge {{
+            display: inline-block;
+            padding: 4px 14px;
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.85rem;
+            border-radius: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+        }}
     </style>
 </head>
 <body>
@@ -458,6 +471,7 @@ class HTMLReportRenderer:
                 <div><strong>Perfil de Scan:</strong> {profile.upper()}</div>
                 <div><strong>Alvo Principal:</strong> <code>{target}</code></div>
                 <div><strong>Data de Geração:</strong> {now}</div>
+                {"        <div style=\"margin-top: 10px;\"><span class=\"lab-badge\">LAB TARGET</span></div>" if is_lab else ""}
             </div>
         </div>
 

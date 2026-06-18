@@ -19,6 +19,7 @@ class MarkdownReportRenderer:
         score: int,
         risk_level: str,
         collected_data: dict[str, Any],
+        is_lab: bool = False,
     ) -> str:
         """Compiles report data into a clean markdown string."""
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -40,7 +41,9 @@ class MarkdownReportRenderer:
         severity_counts = {sev: len(lst) for sev, lst in findings_by_sev.items()}
 
         # 1. Header and Cover info
-        md = f"""# GHOSTMIRROR SECURITY ASSESSMENT
+        lab_badge = "\n> **🧪 LAB TARGET** — Ambiente Controlado (GhostMirror Lab Mode)\n" if is_lab else ""
+
+        md = f"""# GHOSTMIRROR SECURITY ASSESSMENT{lab_badge}
 
 - **Projeto:** {project_name}
 - **Perfil de Execução:** {profile.upper()}

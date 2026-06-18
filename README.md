@@ -28,6 +28,7 @@ categories are disabled by default and must be opted into deliberately.
 - Technology & CVE intelligence engines
 - Full scan orchestration (Lite, Standard, Deep profiles)
 - Multi-format report generation (HTML, Markdown, PDF)
+- **Lab Mode** — controlled vulnerable environments (Juice Shop, DVWA, WebGoat, Vuln Demo) for training and testing
 - **Platform diagnostics**: `doctor`, `health-check`, `status`
 - Centralized logging (execution, scanner, audit, errors)
 - Global configuration system (`config/default.yaml` + `config/settings.yaml`)

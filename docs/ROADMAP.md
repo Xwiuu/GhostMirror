@@ -29,7 +29,7 @@
 - Dry-run, rate limiting, evidence capture, OWASP integration
 - CLI command: `scan payloads`
 
-### Sprint 14 — Lab Mode
+### Sprint 14 — Lab Mode ✅
 - Isolated test environment with disposable containers
 - Safe experimentation without affecting production
 - Automated lab provisioning and teardown

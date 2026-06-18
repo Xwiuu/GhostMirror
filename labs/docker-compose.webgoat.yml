@@ -1,0 +1,7 @@
+services:
+  webgoat:
+    image: webgoat/goatandwolf:latest
+    container_name: ghostmirror-lab-webgoat
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

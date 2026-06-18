@@ -106,6 +106,14 @@ class ScannerBase(ABC):
                 # Not an IP address, skip IP validation
                 pass
 
+        # 3. Check URLs (lab targets)
+        if not in_scope:
+            for url in scope.targets.urls:
+                parsed_host = urlparse(url).hostname or ""
+                if normalized == parsed_host:
+                    in_scope = True
+                    break
+
         if not in_scope:
             logger.error(
                 "TARGET_OUT_OF_SCOPE target={} normalized={} project={}",
