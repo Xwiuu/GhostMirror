@@ -23,10 +23,11 @@
 - Python bridge via subprocess JSON output
 - Benchmark: Nmap vs Rust, WhatWeb vs Rust
 
-### Sprint 13 — Payload Engine Seguro
-- Controlled, sandboxed payload delivery for authenticated tests
-- No brute-force, no DoS, no SQLMap-style injection
-- Audit trail for every payload sent
+### Sprint 13 — Safe Payload Engine ✅
+- Safe, non-destructive payload validation framework
+- 7 categories of safe payloads with safety policy enforcement
+- Dry-run, rate limiting, evidence capture, OWASP integration
+- CLI command: `scan payloads`
 
 ### Sprint 14 — Lab Mode
 - Isolated test environment with disposable containers

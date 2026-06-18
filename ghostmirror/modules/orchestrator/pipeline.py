@@ -35,6 +35,7 @@ PIPELINE_PROFILES: dict[ProfileName, list[str]] = {
         "cve_intelligence",
         "nuclei",
         "owasp",
+        "payloads",
         "report",
     ],
 }

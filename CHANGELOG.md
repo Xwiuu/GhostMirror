@@ -98,3 +98,21 @@ All notable changes to GhostMirror are documented here.
 - CLI command: `scan owasp` (interactive + non-interactive)
 - Full integration with reporting engine (HTML/MD sections + blended scoring)
 - Full integration with standard/deep scan pipeline
+
+### Safe Payload Engine (Sprint 13)
+- `PayloadRegistry`: register, organize, and query 20+ safe non-destructive payloads across 7 categories
+- `SafetyPolicy`: blocks destructive payloads, BLOCKED safety level, requires confirmation for sensitive ones
+- `PayloadEngine`: orchestrates safe payload scan lifecycle with dry-run, rate limiting, evidence capture
+- `PayloadExecutor`: executes payloads with baseline vs probe comparison, HTTP requests, and signal detection
+- Comparators: ReflectionComparator, ErrorSignatureComparator, RedirectComparator, StatusComparator, TimingComparator
+- Evidence capture with body sanitization (no full bodies, no secrets exposed)
+- Rate limiter: 2 req/s, max 25 payloads per target
+- OWASP integration: consumes `evidence/owasp/forms.json` and `evidence/owasp/enumeration.json`
+- CLI command: `scan payloads` with `--project`, `--target`, `--category`, `--dry-run`, `--confirm-sensitive`
+- Report integration: "Safe Payload Validation" section in HTML and Markdown reports
+- Pipeline integration: payloads step in DEEP profile
+- Doctor/HealthCheck: validates registry integrity and safety policy
+- Safety levels: PASSIVE, SAFE_REFLECTION, SAFE_ERROR_TRIGGER, MANUAL_CONFIRMATION_REQUIRED, BLOCKED
+- Outputs: `findings/payload_findings.json`, `profiles/payload_profile.json`, `evidence/payloads/*.json`
+- 95%+ test coverage on payloads module
+- Documentation: `docs/PAYLOAD_ENGINE_SAFETY.md`

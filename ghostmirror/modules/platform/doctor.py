@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -65,6 +67,24 @@ class DoctorEngine:
             console.print("[green][✓][/] Scope Engine")
         else:
             console.print("[red][✗][/] Scope Engine (Bibliotecas Python ausentes)")
+            all_ok = False
+
+        # Payload Registry
+        try:
+            from ghostmirror.modules.payloads.engine import PayloadEngine
+            health = PayloadEngine.check_health(Path("."))
+            if health["registry_valid"]:
+                console.print(f"[green][✓][/] Payload Registry ({health['total_payloads_registered']} payloads)")
+            else:
+                console.print(f"[red][✗][/] Payload Registry ({health['registry_message']})")
+                all_ok = False
+            if health["safety_policy_valid"]:
+                console.print("[green][✓][/] Payload Safety Policy")
+            else:
+                console.print(f"[red][✗][/] Payload Safety Policy ({health['safety_policy_message']})")
+                all_ok = False
+        except Exception:
+            console.print("[red][✗][/] Payload Engine (Módulo não disponível)")
             all_ok = False
 
         console.print("\nSystem Status:")

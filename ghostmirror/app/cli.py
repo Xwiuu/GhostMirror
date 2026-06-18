@@ -373,12 +373,13 @@ def _menu_scans(ctx: AppContext, state: SessionState) -> None:
         console.print("[bold]\\[4][/] Fingerprint / WhatWeb Scan")
         console.print("[bold]\\[5][/] Nuclei Smart Scan")
         console.print("[bold]\\[6][/] OWASP Top 10 Light Assessment")
+        console.print("[bold]\\[7][/] Safe Payload Scan")
         console.print("[bold]\\[0][/] Voltar")
 
         try:
             choice = Prompt.ask(
                 "\nEscolha uma opção",
-                choices=["0", "1", "2", "3", "4", "5", "6"],
+                choices=["0", "1", "2", "3", "4", "5", "6", "7"],
                 default="0",
                 show_choices=False,
             )
@@ -489,6 +490,36 @@ def _menu_scans(ctx: AppContext, state: SessionState) -> None:
                     console.print(f"\nFindings:\n{total}")
                     by_sev = prof.get("risk_score", 0)
                     console.print(f"\nOWASP Risk:\n{prof.get('risk_level', 'N/A')} (Score: {by_sev})")
+            except Exception as exc:
+                console.print(f"[bold red]Erro:[/] {exc}")
+        elif choice == "7":
+            from ghostmirror.modules.payloads.engine import PayloadEngine
+            dry_run = Prompt.ask("Modo dry-run? (apenas listar, sem executar)", choices=["s", "n"], default="s").strip().lower() == "s"
+            category_str = Prompt.ask("Categoria (deixe vazio para todas)", default="").strip()
+            category = None
+            if category_str:
+                from ghostmirror.models.payload_profile import PayloadCategory
+                try:
+                    category = PayloadCategory(category_str.upper())
+                except ValueError:
+                    console.print(f"[red]Categoria inválida: {category_str}. Ignorando filtro.[/]")
+            confirm_sensitive = Prompt.ask("Confirmar payloads sensíveis manualmente?", choices=["s", "n"], default="n").strip().lower() == "s"
+            param = Prompt.ask("Parâmetro alvo (query parameter)", default="q").strip()
+            engine = PayloadEngine(
+                project_path=state.active_project.path,
+                target=target,
+                dry_run=dry_run,
+                confirm_sensitive=confirm_sensitive,
+            )
+            try:
+                with console.status("[bold green]Executando Safe Payload Scan...[/]"):
+                    report = engine.analyze_project(category=category, parameter=param)
+                console.print(f"[green]Safe Payload Scan concluído![/]")
+                console.print(f"Registered: {report['total_payloads_registered']}")
+                console.print(f"Executed: {report['payloads_executed']}")
+                console.print(f"Blocked: {report['payloads_blocked']}")
+                console.print(f"Findings: {report['findings_generated']}")
+                console.print(f"Risk: {report['risk_level']} (Score: {report['risk_score']})")
             except Exception as exc:
                 console.print(f"[bold red]Erro:[/] {exc}")
         _pause()
@@ -1740,6 +1771,97 @@ def cmd_scan_owasp(
         console.print("\nRecommendations:")
         for rec in prof["recommendations"][:5]:
             console.print(f"  - {rec}")
+    console.print("---")
+
+
+@scan_app.command("payloads", help="Executa o Safe Payload Engine (payloads não destrutivos, controlados).")
+def cmd_scan_payloads(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+    target: str = typer.Option(None, "--target", "-t", help="Alvo do scan (domínio, URL ou IP)"),
+    category: str | None = typer.Option(None, "--category", "-c", help="Filtrar por categoria de payload"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Modo dry-run: lista payloads sem executar"),
+    confirm_sensitive: bool = typer.Option(False, "--confirm-sensitive", help="Permite executar payloads que requerem confirmação manual"),
+    parameter: str = typer.Option("q", "--parameter", "-P", help="Query parameter alvo para injeção"),
+) -> None:
+    """Executa o Safe Payload Engine no alvo especificado. Apenas payloads não destrutivos e controlados."""
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado. Por favor, crie um projeto primeiro.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    if not target:
+        scope = app_ctx.projects.read_scope(handle)
+        console.print(
+            f"[dim]Domínios em escopo:[/] {', '.join(scope.targets.domains) or '—'}\n"
+            f"[dim]IPs em escopo:[/] {', '.join(scope.targets.ips) or '—'}"
+        )
+        target = Prompt.ask("Digite o alvo para o scan (ex: empresa.com.br)").strip()
+        if not target:
+            console.print("[bold red]Alvo obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    from ghostmirror.models.payload_profile import PayloadCategory
+
+    cat_enum = None
+    if category:
+        try:
+            cat_enum = PayloadCategory(category.upper())
+        except ValueError:
+            valid = [c.value for c in PayloadCategory]
+            console.print(f"[bold red]Categoria inválida: {category}. Válidas: {', '.join(valid)}[/]")
+            raise typer.Exit(code=1)
+
+    from ghostmirror.modules.payloads.engine import PayloadEngine
+
+    engine = PayloadEngine(
+        project_path=handle.path,
+        target=target,
+        dry_run=dry_run,
+        confirm_sensitive=confirm_sensitive,
+    )
+
+    try:
+        with console.status("[bold green]Executando Safe Payload Scan...[/]"):
+            report = engine.analyze_project(category=cat_enum, parameter=parameter)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante a execução do scan:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("SAFE PAYLOAD VALIDATION COMPLETE\n")
+    console.print("Target:")
+    console.print(report["target"])
+    console.print("\nDry Run:")
+    console.print("Sim" if report["dry_run"] else "Não")
+    console.print("\nPayloads Registered:")
+    console.print(str(report["total_payloads_registered"]))
+    console.print("\nPayloads Executed:")
+    console.print(str(report["payloads_executed"]))
+    console.print("\nPayloads Blocked:")
+    console.print(str(report["payloads_blocked"]))
+    console.print("\nCategories Tested:")
+    console.print(str(len(report["categories_tested"])))
+    console.print("\nFindings Generated:")
+    console.print(str(report["findings_generated"]))
+    console.print("\nRisk Score:")
+    console.print(str(report["risk_score"]))
+    console.print("\nRisk Level:")
+    console.print(report["risk_level"])
     console.print("---")
 
 

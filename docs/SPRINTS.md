@@ -96,3 +96,23 @@
 - CI job: `cargo fmt`, `cargo clippy`, `cargo test`, release build
 - Docker: multi-stage build with Rust builder stage
 - Rust unit + integration tests, Python bridge tests
+
+## Sprint 13 — Safe Payload Engine
+- `PayloadRegistry`: register, organize, and query safe non-destructive payloads
+- `SafetyPolicy`: blocks destructive payloads, BLOCKED safety level, unconfirmed sensitive payloads
+- `PayloadEngine`: orchestrates safe payload scan lifecycle with dry-run, rate limiting, evidence capture
+- `PayloadExecutor`: executes payloads with baseline vs probe comparison, HTTP requests, signal detection
+- 7 safe payload categories: XSS_REFLECTION, SQL_ERROR_INDICATOR, OPEN_REDIRECT_INDICATOR, SSRF_SURFACE_INDICATOR, PATH_TRAVERSAL_INDICATOR, HEADER_INJECTION_INDICATOR, TEMPLATE_INJECTION_INDICATOR
+- 5 comparators: ReflectionComparator, ErrorSignatureComparator, RedirectComparator, StatusComparator, TimingComparator
+- Evidence capture with body sanitization (no full bodies, no secrets)
+- Rate limiter: 2 req/s, max 25 payloads per target
+- Dry-run mode: list payloads without executing
+- OWASP integration: consumes `evidence/owasp/forms.json` and `evidence/owasp/enumeration.json`
+- CLI command: `scan payloads` with `--project`, `--target`, `--category`, `--dry-run`, `--confirm-sensitive`
+- Report integration: "Safe Payload Validation" section in HTML and Markdown reports
+- Pipeline integration: payloads step in DEEP profile
+- Doctor/HealthCheck: validates registry integrity and safety policy
+- Safety levels: PASSIVE, SAFE_REFLECTION, SAFE_ERROR_TRIGGER, MANUAL_CONFIRMATION_REQUIRED, BLOCKED
+- Automatic blocking of destructive, BLOCKED, and unconfirmed payloads
+- Outputs: `findings/payload_findings.json`, `profiles/payload_profile.json`, `evidence/payloads/payload_results.json`, `evidence/payloads/sanitized_evidence.json`
+- 95%+ test coverage on payloads module

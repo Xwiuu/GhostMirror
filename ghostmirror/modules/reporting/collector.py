@@ -42,6 +42,9 @@ class ReportCollector:
                 "owasp_findings": self._load_finding_list(
                     self.findings_dir / "owasp_findings.json"
                 ),
+                "payload_findings": self._load_finding_list(
+                    self.findings_dir / "payload_findings.json"
+                ),
             },
             "profiles": {
                 "technology_profile": self._load_json_dict(
@@ -61,6 +64,9 @@ class ReportCollector:
                 ),
                 "owasp_profile": self._load_json_dict(
                     self.profiles_dir / "owasp_profile.json"
+                ),
+                "payload_profile": self._load_json_dict(
+                    self.profiles_dir / "payload_profile.json"
                 ),
             },
         }
@@ -154,6 +160,13 @@ class ReportCollector:
 
         # 5. OWASP findings list
         for finding in findings_dict["owasp_findings"]:
+            key = (finding.title, finding.description)
+            if key not in seen_keys:
+                seen_keys.add(key)
+                aggregated.append(finding)
+
+        # 6. Payload findings list
+        for finding in findings_dict["payload_findings"]:
             key = (finding.title, finding.description)
             if key not in seen_keys:
                 seen_keys.add(key)

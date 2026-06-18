@@ -20,6 +20,12 @@ from ghostmirror.models.nuclei_result import NucleiResult
 from ghostmirror.models.nuclei_template import NucleiTemplate
 from ghostmirror.models.owasp_finding import OWASPCategory, OWASPFinding
 from ghostmirror.models.owasp_profile import OWASPProfile
+from ghostmirror.models.payload_result import PayloadResult
+from ghostmirror.models.payload_profile import (
+    PayloadProfile,
+    SafetyLevel,
+    PayloadCategory,
+)
 
 __all__ = [
     "ProjectModel",
@@ -45,5 +51,8 @@ __all__ = [
     "OWASPCategory",
     "OWASPFinding",
     "OWASPProfile",
+    "PayloadResult",
+    "PayloadProfile",
+    "SafetyLevel",
+    "PayloadCategory",
 ]
-

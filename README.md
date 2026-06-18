@@ -426,3 +426,4 @@ ghostmirror report generate --project <slug> --format pdf
 | **10** | **Platform consolidation: doctor, health-check, status, logging, error handling** | ✅ |
 | **11** | **OWASP Top 10 Light Engine (safe, read-only checks)** | ✅ |
 | **12** | **Rust Engine Foundation (port scanner, banner, fingerprint, Python bridge)** | ✅ |
+| **13** | **Safe Payload Engine (non-destructive payloads, dry-run, safety policy)** | ✅ |

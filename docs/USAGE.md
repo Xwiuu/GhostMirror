@@ -79,3 +79,21 @@ ghostmirror doctor        # comprehensive environment check
 ghostmirror health-check  # quick pass/fail
 ghostmirror status --project <slug>  # project overview
 ```
+
+## Safe Payload Validation
+
+```bash
+# Dry-run: list payloads without executing
+ghostmirror scan payloads -p <slug> -t target.com --dry-run
+
+# Execute by category
+ghostmirror scan payloads -p <slug> -t target.com --category XSS_REFLECTION
+
+# Execute with sensitive confirmation
+ghostmirror scan payloads -p <slug> -t target.com --confirm-sensitive
+
+# Custom parameter
+ghostmirror scan payloads -p <slug> -t target.com --parameter search
+```
+
+See [PAYLOAD_ENGINE_SAFETY.md](PAYLOAD_ENGINE_SAFETY.md) for full safety documentation.

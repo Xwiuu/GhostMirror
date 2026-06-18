@@ -653,8 +653,101 @@ class HTMLReportRenderer:
         html_template += """
         </div>
 
+        <!-- SAFE PAYLOAD VALIDATION -->
+        <h3 class="section-title">6. Safe Payload Validation</h3>
+        <div class="card">
+        """
+
+        payload_profile = collected_data["profiles"].get("payload_profile") or {}
+        payload_all_findings = all_findings_data.get("payload_findings") or []
+
+        if payload_profile:
+            pp_total = payload_profile.get("total_payloads_registered", 0)
+            pp_executed = payload_profile.get("payloads_executed", 0)
+            pp_blocked = payload_profile.get("payloads_blocked", 0)
+            pp_findings = payload_profile.get("findings_generated", 0)
+            pp_risk_score = payload_profile.get("risk_score", 0)
+            pp_risk_level = payload_profile.get("risk_level", "N/A")
+            pp_dry_run = payload_profile.get("dry_run", False)
+
+            html_template += f"""
+            <div class="dashboard-row">
+                <div class="score-circle" style="border-color: var(--accent-color);">
+                    <span class="score-val" style="font-size: 2.5rem;">{pp_risk_score}</span>
+                    <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Payload Risk</span>
+                </div>
+                <div class="severity-container">
+                    <span class="risk-level-badge risk-{pp_risk_level.lower()}">{pp_risk_level}</span>
+                </div>
+            </div>
+            <div class="stats-row">
+                <div class="stats-card">
+                    <h4 style="color: var(--accent-color); margin-bottom: 15px; text-transform: uppercase;">Payload Summary</h4>
+                    <div class="severity-row">
+                        <span class="severity-label">Registered</span>
+                        <span class="severity-val" style="color: var(--accent-color); font-size: 1.5rem;">{pp_total}</span>
+                    </div>
+                    <div class="severity-row">
+                        <span class="severity-label">Executed</span>
+                        <span class="severity-val" style="color: var(--accent-color); font-size: 1.5rem;">{pp_executed}</span>
+                    </div>
+                    <div class="severity-row">
+                        <span class="severity-label">Blocked</span>
+                        <span class="severity-val" style="color: var(--accent-color); font-size: 1.5rem;">{pp_blocked}</span>
+                    </div>
+                    <div class="severity-row">
+                        <span class="severity-label">Findings</span>
+                        <span class="severity-val" style="color: var(--accent-color); font-size: 1.5rem;">{pp_findings}</span>
+                    </div>
+                    <div class="severity-row">
+                        <span class="severity-label">Dry Run</span>
+                        <span class="severity-val" style="color: var(--accent-color); font-size: 1.5rem;">{'Yes' if pp_dry_run else 'No'}</span>
+                    </div>
+                </div>
+            </div>
+            """
+
+            if payload_all_findings:
+                html_template += """
+                <h4 style="color: var(--accent-color); margin-bottom: 15px;">Payload Findings</h4>
+                <table class="findings-table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Severity</th>
+                            <th>Target</th>
+                            <th>Evidence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                """
+                for finding in payload_all_findings:
+                    sev = finding.get("severity", "INFO").lower()
+                    title = finding.get("title", "N/A")
+                    target = finding.get("target", "N/A")
+                    evidence = finding.get("evidence", "N/A")[:120]
+                    html_template += f"""
+                        <tr>
+                            <td>{title}</td>
+                            <td><span class="severity-badge severity-{sev}">{sev.upper()}</span></td>
+                            <td>{target}</td>
+                            <td style="font-size: 0.75rem;">{evidence}</td>
+                        </tr>
+                    """
+                html_template += """
+                    </tbody>
+                </table>
+                """
+        else:
+            html_template += """
+            <p>Safe Payload Validation data not available. Execute <code>ghostmirror scan payloads</code> to generate.</p>
+            """
+
+        html_template += """
+        </div>
+
         <!-- RECOMENDAÇÕES E PRÓXIMOS PASSOS -->
-        <h3 class="section-title">6. Recomendações e Próximos Passos</h3>
+        <h3 class="section-title">7. Recomendações e Próximos Passos</h3>
         <div class="card" style="text-align: left;">
             <ul style="padding-left: 20px;">
                 <li style="margin-bottom: 12px;"><strong>Fase de Mitigação:</strong> Revise as configurações de servidores web e aplique patches de segurança para as tecnologias identificadas com CVEs ativas.</li>

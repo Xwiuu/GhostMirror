@@ -181,9 +181,53 @@ A avaliação OWASP Top 10 Light identificou **{owasp_total}** achados em **{len
 ---\n
 """
 
-        # 6. Next steps
+        # 6. Safe Payload Validation
+        payload_profile = collected_data["profiles"].get("payload_profile") or {}
+        payload_findings = all_findings_data.get("payload_findings") or []
+
+        if payload_profile:
+            pp_total = payload_profile.get("total_payloads_registered", 0)
+            pp_executed = payload_profile.get("payloads_executed", 0)
+            pp_blocked = payload_profile.get("payloads_blocked", 0)
+            pp_findings = payload_profile.get("findings_generated", 0)
+            pp_risk_score = payload_profile.get("risk_score", 0)
+            pp_risk_level = payload_profile.get("risk_level", "N/A")
+            pp_dry_run = payload_profile.get("dry_run", False)
+
+            md += f"""
+## 6. SAFE PAYLOAD VALIDATION
+
+A validação de payloads seguros registrou **{pp_total}** payloads, dos quais **{pp_executed}** foram executados e **{pp_blocked}** bloqueados.
+
+**Payload Risk Score:** {pp_risk_score}/100 — **{pp_risk_level}**
+**Dry Run:** {'Sim' if pp_dry_run else 'Não'}
+**Findings Gerados:** {pp_findings}
+
+"""
+
+            if payload_findings:
+                md += """
+### Payload Findings
+
+| Título | Severidade | Alvo | Evidência |
+| :--- | :--- | :--- | :--- |
+"""
+                for finding in payload_findings:
+                    md += f"| {finding.get('title', 'N/A')} | {finding.get('severity', 'INFO')} | {finding.get('target', 'N/A')} | {str(finding.get('evidence', 'N/A'))[:80]} |\n"
+
+            md += "\n---\n"
+        else:
+            md += """
+## 6. SAFE PAYLOAD VALIDATION
+
+*Dados do Safe Payload Validation não disponíveis. Execute `ghostmirror scan payloads` para gerar.*
+
+---\n
+"""
+
+        # 7. Next steps
         md += """
-## 6. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
+## 7. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
 
 1. **Fase de Mitigação:** Priorize a aplicação de patches e atualizações nas tecnologias que apresentarem CVEs de criticidade Crítica ou Alta.
 2. **Hardening de Rede:** Restrinja o acesso a portas administrativas expostas utilizando regras de firewall estritas.

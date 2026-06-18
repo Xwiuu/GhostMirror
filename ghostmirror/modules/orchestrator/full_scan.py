@@ -229,6 +229,17 @@ class FullScanOrchestrator:
             result = scanner.run()
             return len(result.findings)
 
+        elif step_name == "payloads":
+            from ghostmirror.modules.payloads.engine import PayloadEngine
+            engine = PayloadEngine(
+                project_path=self.project_path,
+                target=self.target,
+                dry_run=True,
+                confirm_sensitive=False,
+            )
+            report = engine.analyze_project()
+            return report.get("findings_generated", 0)
+
         else:
             raise ValueError(f"Etapa de pipeline desconhecida: {step_name!r}")
 

@@ -52,6 +52,15 @@ class HealthCheckEngine:
         templates_ok = template_map_file.exists()
         checks.append(("Templates", templates_ok))
 
+        # Payload Engine health check
+        try:
+            from ghostmirror.modules.payloads.engine import PayloadEngine
+            pe_health = PayloadEngine.check_health(Path("."))
+            payload_ok = pe_health["registry_valid"] and pe_health["safety_policy_valid"]
+            checks.append(("PayloadReg", payload_ok))
+        except Exception:
+            checks.append(("PayloadReg", False))
+
         healthy = True
         for name, ok in checks:
             status = "[green]OK[/]" if ok else "[red]FAIL[/]"
