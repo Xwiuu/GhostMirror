@@ -4,6 +4,18 @@ All notable changes to GhostMirror are documented here.
 
 ## v1.0-alpha — 2026-06-18
 
+### Rust Engine Foundation (Sprint 12)
+- Native Rust workspace (`ghostmirror-rs/`) with CLI (clap) and 3 modules
+- **Port Scanner**: TCP Connect Scan, supports single port, list, range, 3s timeout, concurrent batches
+- **Banner Grabber**: TCP banner + HTTP HEAD/GET banner extraction (Server, X-Powered-By, Via)
+- **HTTP Fingerprint**: HEAD/GET + HTML analysis, detects 15 technologies (WordPress, Drupal, Joomla, Laravel, Django, Flask, Express, Next.js, React, Vue.js, Angular, Nginx, Apache, IIS, Cloudflare) — no external dependencies
+- Python bridge (`ghostmirror/integrations/rust/`) with `ToolRunner`-based execution and Pydantic models
+- CLI commands: `scan rust-portscan`, `scan rust-banner`, `scan rust-fingerprint`
+- Benchmark script: Nmap vs Rust, WhatWeb vs Rust, saved to `projects/evidence/rust/benchmark.json`
+- CI: Rust job with `cargo fmt`, `cargo clippy`, `cargo test`, release build
+- Docker: Multi-stage build with Rust builder stage
+- 90%+ test coverage target for Rust modules
+
 ### Foundation
 - Project scaffolding: package structure, CLI entrypoint, console runner
 - Pydantic-validated project lifecycle (create, list, open)

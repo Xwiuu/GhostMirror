@@ -1,6 +1,15 @@
 # GhostMirror — Internal Pentest Automation Platform
 # Multi-purpose image: prints version on `docker compose up`, and can run the
 # interactive CLI via `docker compose run --rm ghostmirror interactive`.
+
+# Stage 1: Build Rust native engine
+FROM rust:1.85-slim AS rust-builder
+WORKDIR /rust
+COPY ghostmirror-rs/ .
+RUN cargo build --release && \
+    cp target/release/ghostmirror-rs /usr/local/bin/ghostmirror-rs
+
+# Stage 2: Python runtime
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -35,6 +44,9 @@ RUN curl -L -o /tmp/nuclei.zip https://github.com/projectdiscovery/nuclei/releas
 # Install dependencies first to leverage Docker layer caching.
 COPY requirements.txt ./
 RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# Copy the Rust binary from builder stage
+COPY --from=rust-builder /usr/local/bin/ghostmirror-rs /usr/local/bin/ghostmirror-rs
 
 # Copy the project and install it (provides the `ghostmirror` console script).
 COPY . .

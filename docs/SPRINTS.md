@@ -83,3 +83,16 @@
 - Full integration with reporting engine (HTML/MD sections + blended scoring)
 - Full integration with standard/deep scan pipeline
 - 10 category checks (Broken Access Control, Cryptographic Failures, Injection, Insecure Design, Misconfiguration, Vulnerable Components, Authentication, Integrity, Logging, SSRF)
+
+## Sprint 12 — Rust Engine Foundation
+- Native Rust workspace (`ghostmirror-rs/`) with Cargo.toml, CLI (clap), 3 scan modules
+- `Port Scanner`: TCP Connect Scan, single/list/range ports, configurable timeout, concurrent batches
+- `Banner Grabber`: TCP service banner + HTTP HEAD/GET banner extraction (Server, X-Powered-By, Via)
+- `HTTP Fingerprint`: HEAD + GET requests, header analysis, HTML analysis — detects 15 technologies (WordPress, Drupal, Joomla, Laravel, Django, Flask, Express, Next.js, React, Vue.js, Angular, Nginx, Apache, IIS, Cloudflare) without WhatWeb/BuiltWith/Wappalyzer
+- JSON serialization via serde with standardized `PortResult`, `BannerResult`, `FingerprintResult` models
+- Python bridge (`ghostmirror/integrations/rust/`): subprocess execution via `ToolRunner`, JSON parsed into Pydantic models
+- CLI commands: `scan rust-portscan`, `scan rust-banner`, `scan rust-fingerprint`
+- Benchmark: Nmap vs Rust, WhatWeb vs Rust — saved to `projects/evidence/rust/benchmark.json`
+- CI job: `cargo fmt`, `cargo clippy`, `cargo test`, release build
+- Docker: multi-stage build with Rust builder stage
+- Rust unit + integration tests, Python bridge tests

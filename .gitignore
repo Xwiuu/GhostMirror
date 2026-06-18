@@ -50,3 +50,7 @@ config/settings.yaml
 
 # Documentation backups
 *.md.bak
+
+# Rust build artifacts
+ghostmirror-rs/target/
+ghostmirror-rs/Cargo.lock

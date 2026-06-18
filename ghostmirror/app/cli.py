@@ -1571,6 +1571,82 @@ analyze_app = typer.Typer(help="Analisa perfis e dados coletados para inteligên
 app.add_typer(analyze_app, name="analyze")
 
 
+@scan_app.command("rust-portscan", help="Executa o Port Scanner nativo em Rust (TCP Connect Scan).")
+def cmd_scan_rust_portscan(
+    ctx: typer.Context,
+    host: str = typer.Option(..., "--host", help="Alvo do scan (domínio ou IP)"),
+    ports: str = typer.Option(..., "--ports", help="Portas (ex: 80, 80,443, 1-1000)"),
+    timeout: int = typer.Option(3, "--timeout", help="Timeout por conexão em segundos"),
+) -> None:
+    """Executa o port scanner Rust no alvo especificado."""
+    try:
+        from ghostmirror.integrations.rust.runner import RustBridge
+        bridge = RustBridge()
+        with console.status("[bold green]Executando Rust Port Scanner...[/]"):
+            result = bridge.portscan(host=host, ports=ports, timeout=timeout)
+        console.print("---")
+        console.print("RUST PORT SCAN COMPLETE\n")
+        console.print(f"Target: {result.target}")
+        console.print(f"Open Ports: {len(result.open_ports)}")
+        for p in result.open_ports:
+            console.print(f"  - {p.port}/{p.state}")
+        console.print(f"Duration: {result.duration_ms}ms")
+        console.print("---")
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+
+
+@scan_app.command("rust-banner", help="Executa o Banner Grabber nativo em Rust (TCP + HTTP).")
+def cmd_scan_rust_banner(
+    ctx: typer.Context,
+    host: str = typer.Option(..., "--host", help="Alvo do scan (domínio ou IP)"),
+    port: int = typer.Option(80, "--port", help="Porta alvo"),
+    tls: bool = typer.Option(False, "--tls", help="Usar TLS/HTTPS"),
+) -> None:
+    """Executa o banner grabber Rust no alvo especificado."""
+    try:
+        from ghostmirror.integrations.rust.runner import RustBridge
+        bridge = RustBridge()
+        with console.status("[bold green]Executando Rust Banner Grabber...[/]"):
+            result = bridge.banner(host=host, port=port, tls=tls)
+        console.print("---")
+        console.print("RUST BANNER GRAB COMPLETE\n")
+        console.print(f"Host: {result.host}")
+        console.print(f"Port: {result.port}")
+        console.print(f"Server: {result.server or '—'}")
+        console.print(f"X-Powered-By: {result.powered_by or '—'}")
+        console.print(f"Via: {result.via or '—'}")
+        console.print(f"Technologies: {', '.join(result.technologies) if result.technologies else '—'}")
+        console.print("---")
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+
+
+@scan_app.command("rust-fingerprint", help="Executa o HTTP Fingerprint nativo em Rust.")
+def cmd_scan_rust_fingerprint(
+    ctx: typer.Context,
+    url: str = typer.Option(..., "--url", help="URL alvo (ex: https://example.com)"),
+) -> None:
+    """Executa o fingerprint HTTP Rust no alvo especificado."""
+    try:
+        from ghostmirror.integrations.rust.runner import RustBridge
+        bridge = RustBridge()
+        with console.status("[bold green]Executando Rust HTTP Fingerprint...[/]"):
+            result = bridge.fingerprint(url=url)
+        console.print("---")
+        console.print("RUST FINGERPRINT COMPLETE\n")
+        console.print(f"Target: {result.target}")
+        console.print(f"CMS: {result.cms or '—'}")
+        console.print(f"WAF: {result.waf or '—'}")
+        console.print(f"Cloudflare: {'Yes' if result.cloudflare else 'No'}")
+        console.print(f"\nTechnologies ({len(result.technologies)}):")
+        for t in result.technologies:
+            console.print(f"  - {t.name} ({t.category}) [{t.confidence}%]")
+        console.print("---")
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+
+
 @scan_app.command("owasp", help="Executa o OWASP Top 10 Light Assessment (seguro, sem exploração).")
 def cmd_scan_owasp(
     ctx: typer.Context,

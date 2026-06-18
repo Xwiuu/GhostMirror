@@ -18,10 +18,10 @@
 
 ## Upcoming Sprints
 
-### Sprint 12 — Rust Engine
-- High-performance scanning via Rust native modules
-- Parallel HTTP checks and DNS resolution
-- Python/Rust FFI bridge
+### Sprint 12 — Rust Engine ✅
+- Native Rust workspace with port scanner, banner grabber, HTTP fingerprint
+- Python bridge via subprocess JSON output
+- Benchmark: Nmap vs Rust, WhatWeb vs Rust
 
 ### Sprint 13 — Payload Engine Seguro
 - Controlled, sandboxed payload delivery for authenticated tests

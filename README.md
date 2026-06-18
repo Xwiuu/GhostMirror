@@ -1,6 +1,6 @@
 # GhostMirror
 
-**Internal Pentest Automation Platform** — v1.0-alpha (Sprint 11)
+**Internal Pentest Automation Platform** — v1.0-alpha (Sprint 12)
 
 GhostMirror is an **internal** platform used exclusively by our software house for
 **authorized** security audits, attack-surface mapping, security assessments and
@@ -39,6 +39,17 @@ categories are disabled by default and must be opted into deliberately.
 
 ```
 GHOSTMIRROR/
+├── ghostmirror-rs/                 # Rust native engine (port scanner, banner, fingerprint)
+│   ├── Cargo.toml
+│   ├── src/
+│   │   ├── main.rs                 # CLI (clap) — portscan, banner, fingerprint
+│   │   ├── lib.rs
+│   │   ├── models.rs               # PortResult, BannerResult, FingerprintResult
+│   │   ├── output.rs               # JSON serialization
+│   │   ├── port_scanner.rs         # TCP Connect Scan
+│   │   ├── banner_grabber.rs       # TCP + HTTP banner grab
+│   │   └── http_fingerprint.rs     # HEAD/GET + HTML analysis
+│   └── tests/                      # Rust integration tests
 ├── ghostmirror/                    # Python package
 │   ├── app/                        # Application layer (CLI / entrypoints)
 │   │   ├── cli.py                  # Typer + Rich interactive CLI (menu + non-interactive)
@@ -51,7 +62,14 @@ GHOSTMIRROR/
 │   │   └── scope_manager.py        # Scope build / load / validate
 │   ├── models/                     # Pydantic domain models
 │   ├── storage/                    # Filesystem persistence
-│   ├── integrations/               # External tool integrations (Nmap, Nuclei, WhatWeb)
+│   ├── integrations/               # External tool integrations
+│   │   ├── nmap/                   # Nmap integration
+│   │   ├── nuclei/                 # Nuclei integration
+│   │   ├── whatweb/                # WhatWeb integration
+│   │   └── rust/                   # Rust native engine bridge
+│   │       ├── runner.py           # RustBridge — subprocess + JSON parse
+│   │       ├── models.py           # Pydantic models for Rust output
+│   │       └── benchmark.py        # Benchmark: Nmap vs Rust, WhatWeb vs Rust
 │   ├── modules/                    # Scanner framework + concrete modules
 │   │   ├── base/                   # ScannerBase (abstract)
 │   │   ├── findings/               # FindingsManager
@@ -70,14 +88,15 @@ GHOSTMIRROR/
 │   ├── default.yaml                # Default settings
 │   └── settings.yaml               # User overrides
 ├── projects/                       # Generated engagement projects
+│   └── evidence/rust/              # Rust benchmark results
 ├── reports/                        # Generated reports
 ├── logs/                           # Centralized logs
 │   ├── execution.log               # All events
 │   ├── scanner.log                 # Scanner-only events
 │   ├── audit.log                   # Audit trail (scan start/finish)
 │   └── errors.log                  # Error backtraces
-├── tests/                          # pytest suite (226 tests)
-├── Dockerfile
+├── tests/                          # pytest suite
+├── Dockerfile                      # Multi-stage build (Rust + Python)
 ├── docker-compose.yml
 ├── pyproject.toml
 └── README.md
@@ -101,7 +120,16 @@ projects/<client>-<project>/
 
 ## 🚀 Installation (local)
 
-Requires **Python 3.12+**.
+Requires **Python 3.12+** and **Rust 1.85+** (for native engine).
+
+```bash
+# Build native Rust engine
+cd ghostmirror-rs
+cargo build --release
+cd ..
+
+# Then proceed with Python installation
+```
 
 ```bash
 # 1. Create and activate a virtual environment
@@ -188,6 +216,20 @@ ghostmirror health-check
 ghostmirror status --project <slug>
 ```
 
+### Rust native engine commands (Sprint 12)
+
+```bash
+ghostmirror scan rust-portscan --host example.com --ports 22,80,443
+ghostmirror scan rust-banner --host example.com --port 80
+ghostmirror scan rust-fingerprint --url https://example.com
+```
+
+### Benchmark (Rust vs Nmap / WhatWeb)
+
+```bash
+python -m ghostmirror.integrations.rust.benchmark
+```
+
 ### Non-interactive commands
 
 ```bash
@@ -220,8 +262,14 @@ ghostmirror status --project <slug>
 
 ```bash
 pip install -e ".[dev]"   # or: pip install pytest
-pytest                    # 226 tests, 0 failures expected
+pytest                    # pytest suite (Python)
 pytest --cov=ghostmirror  # With coverage report
+
+# Rust tests
+cd ghostmirror-rs
+cargo test                # Rust unit + integration tests
+cargo fmt --all --check   # Formatting check
+cargo clippy -- -D warnings  # Lint check
 ```
 
 The suite covers all modules including platform diagnostics, error handling,
@@ -270,6 +318,9 @@ All events are written to `logs/` in the format:
 │          Intelligence Engines               │
 │  (Technology, CVE, Fingerprint)              │
 ├─────────────────────────────────────────────┤
+│      Rust Native Engine (ghostmirror-rs)    │
+│  (portscan, banner, fingerprint CLI)         │
+├─────────────────────────────────────────────┤
 │            Storage & Persistence            │
 │  (Filesystem: findings, profiles, evidence)  │
 ├─────────────────────────────────────────────┤
@@ -277,6 +328,32 @@ All events are written to `logs/` in the format:
 │  (HTML/MD/PDF, doctor, health-check, status) │
 └─────────────────────────────────────────────┘
 ```
+
+## 🦀 Rust Native Engine
+
+GhostMirror agora possui motor nativo em Rust para operações de alta performance:
+
+| Comando | Descrição |
+|---------|-----------|
+| `ghostmirror scan rust-portscan` | TCP Connect Scan (única/lista/range) |
+| `ghostmirror scan rust-banner` | Banner grabbing TCP + HTTP |
+| `ghostmirror scan rust-fingerprint` | Detecção de 15 tecnologias web |
+
+### Detecções próprias (sem WhatWeb/BuiltWith/Wappalyzer)
+
+- **CMS**: WordPress, Drupal, Joomla
+- **Frameworks**: Laravel, Django, Flask, Express, Next.js
+- **Frontend**: React, Vue.js, Angular
+- **Servidores**: Nginx, Apache, IIS
+- **CDN/WAF**: Cloudflare
+
+### Benchmark
+
+```bash
+python -m ghostmirror.integrations.rust.benchmark
+```
+
+Resultados salvos em `projects/evidence/rust/benchmark.json`.
 
 ## 🩺 Platform Commands
 
@@ -348,3 +425,4 @@ ghostmirror report generate --project <slug> --format pdf
 | 9 | Interactive menu + full scan + reporting | ✅ |
 | **10** | **Platform consolidation: doctor, health-check, status, logging, error handling** | ✅ |
 | **11** | **OWASP Top 10 Light Engine (safe, read-only checks)** | ✅ |
+| **12** | **Rust Engine Foundation (port scanner, banner, fingerprint, Python bridge)** | ✅ |
