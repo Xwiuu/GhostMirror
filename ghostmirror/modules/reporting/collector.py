@@ -92,6 +92,24 @@ class ReportCollector:
                 "dns_profile": self._load_json_dict(
                     self.profiles_dir / "dns_profile.json"
                 ),
+                "vulnerability_intelligence_report": self._load_json_dict(
+                    self.profiles_dir / "vulnerability_intelligence" / "vulnerability_intelligence_report.json"
+                ),
+                "vulnerability_priority": self._load_json_list(
+                    self.profiles_dir / "vulnerability_intelligence" / "vulnerability_priority.json"
+                ),
+                "epss_profile": self._load_json_list(
+                    self.profiles_dir / "vulnerability_intelligence" / "epss_profile.json"
+                ),
+                "kev_profile": self._load_json_list(
+                    self.profiles_dir / "vulnerability_intelligence" / "kev_profile.json"
+                ),
+                "exploit_profile": self._load_json_list(
+                    self.profiles_dir / "vulnerability_intelligence" / "exploit_profile.json"
+                ),
+                "attack_opportunities": self._load_json_list(
+                    self.profiles_dir / "vulnerability_intelligence" / "attack_opportunities.json"
+                ),
             },
         }
 

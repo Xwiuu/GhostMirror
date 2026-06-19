@@ -785,8 +785,12 @@ def cmd_doctor(
 # --------------------------------------------------------------------------- #
 # Intelligence command
 # --------------------------------------------------------------------------- #
-@app.command("intelligence", help="Executa o motor completo de inteligência ofensiva (Attack Surface, Scoring, Attack Paths).")
-def cmd_intelligence(
+intelligence_app = typer.Typer(help="Executa o motor completo de inteligência ofensiva.")
+app.add_typer(intelligence_app, name="intelligence")
+
+
+@intelligence_app.command("run", help="Executa o motor completo de inteligência ofensiva (Attack Surface, Scoring, Attack Paths).")
+def cmd_intelligence_run(
     ctx: typer.Context,
     project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
 ) -> None:
@@ -870,6 +874,62 @@ def cmd_intelligence(
         console.print(f"\n[bold orange1]⚠ High Attack Surface: {report.attack_surface_profile.attack_surface_score}/100[/]")
     if report.overall_risk_score >= 61:
         console.print(f"[bold red]⚠ Elevated Risk Score: {report.overall_risk_score}/100[/]")
+
+
+@intelligence_app.command("vulnerabilities", help="Advanced Vulnerability Intelligence - enriquece, correlaciona e prioriza CVEs.")
+def cmd_intelligence_vulnerabilities(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Executa o Advanced Vulnerability Intelligence: enriquecimento de CVEs, EPSS, KEV, Exploit Intelligence, Attack Correlation e Priorização."""
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado. Por favor, crie um projeto primeiro.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.vulnerability_intelligence.engine import AdvancedVulnerabilityEngine
+
+    engine = AdvancedVulnerabilityEngine()
+    try:
+        with console.status("[bold green]Executando Advanced Vulnerability Intelligence..."):
+            report = engine.analyze_project(handle.path)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante Advanced Vulnerability Intelligence:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("VULNERABILITY INTELLIGENCE COMPLETE\n")
+    console.print("Overall Score:")
+    console.print(f"{report.overall_score}/100 — {report.risk_level}")
+    console.print("\nTotal CVEs:")
+    console.print(str(report.total_cves))
+    console.print("\nCritical Priorities:")
+    console.print(str(report.critical_priorities))
+    console.print("\nKEV Count:")
+    console.print(str(report.kev_count))
+    console.print("\nPublic Exploits:")
+    console.print(str(report.public_exploits))
+    console.print("\nTop 3 Priorities:")
+    for p in report.priorities[:3]:
+        console.print(f"  #{p.priority} — {p.cve} ({p.enriched.product}) — Score: {p.risk_score}")
+        console.print(f"    Reason: {p.reason}")
+    console.print("\nQuick Wins:")
+    console.print(str(len(report.quick_wins)))
+    console.print("---")
 
 
 @app.command("health-check", help="Executa verificações rápidas de saúde do sistema.")
@@ -2198,6 +2258,231 @@ def cmd_analyze_attack_paths(
         console.print("[yellow]No actionable attack paths could be modeled. More intelligence data may be needed.[/]")
 
     console.print(f"\n[green]✓ Attack paths saved to: {paths_file}[/]")
+    console.print("---")
+
+
+# --------------------------------------------------------------------------- #
+# Advanced Vulnerability Intelligence sub-commands
+# --------------------------------------------------------------------------- #
+@analyze_app.command("vulnerabilities", help="Advanced Vulnerability Intelligence Engine - enriquece, correlaciona e prioriza CVEs.")
+def cmd_analyze_vulnerabilities(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Executa o Advanced Vulnerability Intelligence: enriquecimento de CVEs, EPSS, KEV, Exploit Intelligence, Attack Correlation e Priorização."""
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado. Por favor, crie um projeto primeiro.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.vulnerability_intelligence.engine import AdvancedVulnerabilityEngine
+
+    engine = AdvancedVulnerabilityEngine()
+    try:
+        with console.status("[bold green]Executando Advanced Vulnerability Intelligence..."):
+            report = engine.analyze_project(handle.path)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante Advanced Vulnerability Intelligence:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("ADVANCED VULNERABILITY INTELLIGENCE COMPLETE\n")
+    console.print("Overall Score:")
+    console.print(f"{report.overall_score}/100 — {report.risk_level}")
+    console.print("\nTotal CVEs:")
+    console.print(str(report.total_cves))
+    console.print("\nCritical Priorities:")
+    console.print(str(report.critical_priorities))
+    console.print("\nHigh Priorities:")
+    console.print(str(report.high_priorities))
+    console.print("\nKEV Count:")
+    console.print(str(report.kev_count))
+    console.print("\nPublic Exploits:")
+    console.print(str(report.public_exploits))
+    console.print("\nEPSS Distribution:")
+    for cls, count in sorted(report.epss_distribution.items()):
+        console.print(f"  {cls}: {count}")
+    console.print("\nTop 3 Priorities:")
+    for p in report.priorities[:3]:
+        console.print(f"  #{p.priority} — {p.cve} ({p.enriched.product}) — Score: {p.risk_score}")
+        console.print(f"    Reason: {p.reason}")
+    console.print("\nAttack Opportunities:")
+    console.print(str(len(report.attack_opportunities)))
+    console.print("\nQuick Wins:")
+    console.print(str(len(report.quick_wins)))
+    console.print("---")
+
+
+@analyze_app.command("kev", help="Known Exploited Vulnerabilities (CISA KEV) analysis.")
+def cmd_analyze_kev(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Analisa CVEs contra o catálogo CISA Known Exploited Vulnerabilities."""
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado. Por favor, crie um projeto primeiro.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.vulnerability_intelligence.engine import AdvancedVulnerabilityEngine
+
+    engine = AdvancedVulnerabilityEngine()
+    try:
+        with console.status("[bold green]Executando KEV Analysis..."):
+            results = engine.analyze_kev_only(handle.path)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante KEV analysis:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("KEV ANALYSIS COMPLETE\n")
+    kev_true = [r for r in results if r.kev]
+    console.print(f"Total CVEs analyzed: {len(results)}")
+    console.print(f"KEV listed: {len(kev_true)}")
+    console.print("\nKEV Findings:")
+    for r in kev_true:
+        console.print(f"  - {r.cve} ({r.vendor_project}/{r.product})")
+        if r.ransomware_usage:
+            console.print("    [red]⚠ Ransomware Usage Confirmed[/]")
+        console.print(f"    Added: {r.date_added}")
+    console.print("---")
+
+
+@analyze_app.command("epss", help="EPSS (Exploit Prediction Scoring System) analysis.")
+def cmd_analyze_epss(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Analisa CVEs com o Exploit Prediction Scoring System."""
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado. Por favor, crie um projeto primeiro.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.vulnerability_intelligence.engine import AdvancedVulnerabilityEngine
+
+    engine = AdvancedVulnerabilityEngine()
+    try:
+        with console.status("[bold green]Executando EPSS Analysis..."):
+            results = engine.analyze_epss_only(handle.path)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante EPSS analysis:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("EPSS ANALYSIS COMPLETE\n")
+    console.print(f"Total CVEs analyzed: {len(results)}")
+    dist: dict[str, int] = {}
+    for r in results:
+        dist[r.classification] = dist.get(r.classification, 0) + 1
+    console.print("\nEPSS Distribution:")
+    for cls in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "VERY_LOW"]:
+        count = dist.get(cls, 0)
+        console.print(f"  {cls}: {count}")
+    console.print("\nTop EPSS Scores:")
+    sorted_results = sorted(results, key=lambda r: r.epss_score, reverse=True)
+    for r in sorted_results[:5]:
+        console.print(f"  {r.cve}: {r.epss_score:.5f} (p{r.percentile:.1f}) — {r.classification}")
+    console.print("---")
+
+
+@analyze_app.command("exploits", help="Exploit Intelligence analysis - weaponization and public exploit availability.")
+def cmd_analyze_exploits(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Analisa a disponibilidade de exploits públicos, módulos Metasploit e templates Nuclei para CVEs."""
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado. Por favor, crie um projeto primeiro.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.vulnerability_intelligence.engine import AdvancedVulnerabilityEngine
+
+    engine = AdvancedVulnerabilityEngine()
+    try:
+        with console.status("[bold green]Executando Exploit Intelligence Analysis..."):
+            results = engine.analyze_exploits_only(handle.path)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante Exploit Intelligence:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("EXPLOIT INTELLIGENCE COMPLETE\n")
+    console.print(f"Total CVEs analyzed: {len(results)}")
+    public = sum(1 for r in results if r.public_exploit)
+    metasploit = sum(1 for r in results if r.metasploit)
+    nuclei = sum(1 for r in results if r.nuclei_template)
+    console.print(f"Public Exploits: {public}")
+    console.print(f"Metasploit Modules: {metasploit}")
+    console.print(f"Nuclei Templates: {nuclei}")
+    console.print("\nWeaponization Distribution:")
+    dist: dict[str, int] = {}
+    for r in results:
+        dist[r.weaponization_level.value] = dist.get(r.weaponization_level.value, 0) + 1
+    for wl in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE"]:
+        count = dist.get(wl, 0)
+        console.print(f"  {wl}: {count}")
+    console.print("\nTop Exploit Risks:")
+    for r in results:
+        if r.weaponization_level.value in ("CRITICAL", "HIGH"):
+            console.print(f"  {r.cve} — {r.weaponization_level.value} — Sources: {', '.join(r.exploit_sources)}")
     console.print("---")
 
 
