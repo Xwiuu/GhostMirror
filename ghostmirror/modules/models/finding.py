@@ -35,6 +35,15 @@ class FindingModel(BaseModel):
     target: str = Field(..., description="Target scanned when this finding was identified")
     evidence: str | None = Field(default=None, description="Request/response snippets or other evidence")
     recommendation: str = Field(..., min_length=1, description="Remediation instructions")
+    category: str | None = Field(default=None, description="Finding category (e.g. Vulnerability Intelligence)")
+    cvss: float | None = Field(default=None, ge=0, le=10, description="CVSS score")
+    epss: float | None = Field(default=None, ge=0, le=1, description="EPSS probability score")
+    kev: bool | None = Field(default=None, description="Whether CVE is in CISA KEV catalog")
+    impact: str | None = Field(default=None, description="Impact level (HIGH, MEDIUM, LOW)")
+    probability: str | None = Field(default=None, description="Exploitation probability (HIGH, MEDIUM, LOW)")
+    exploitability: str | None = Field(default=None, description="Weaponization level")
+    priority: int | None = Field(default=None, description="Priority rank (1 = highest)")
+    references: list[str] | None = Field(default=None, description="Reference URLs")
     created_at: datetime = Field(default_factory=_utcnow, description="Timestamp when the finding was recorded")
 
 

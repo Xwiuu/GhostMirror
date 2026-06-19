@@ -214,7 +214,89 @@ A avaliação OWASP Top 10 Light identificou **{owasp_total}** achados em **{len
 ---\n
 """
 
-        # 6. Safe Payload Validation
+        # 7. Vulnerability Intelligence
+        vi_report = collected_data["profiles"].get("vulnerability_intelligence_report") or {}
+        vi_priorities = collected_data["profiles"].get("vulnerability_priority") or []
+        vi_epss = collected_data["profiles"].get("epss_profile") or []
+        vi_kev = collected_data["profiles"].get("kev_profile") or []
+        vi_exploit = collected_data["profiles"].get("exploit_profile") or []
+        vi_opportunities = collected_data["profiles"].get("attack_opportunities") or []
+
+        if vi_report:
+            md += """
+---
+
+## 7. VULNERABILITY INTELLIGENCE
+
+A plataforma de inteligência avançada de vulnerabilidades correlacionou CVEs, EPSS, KEV, Exploit Intelligence e superfície de ataque para priorização de riscos.
+
+### Score Overview
+
+| Métrica | Valor |
+| :--- | :--- |
+"""
+            md += f"| **Overall Score** | {vi_report.get('overall_score', 0)}/100 |\n"
+            md += f"| **Risk Level** | {vi_report.get('risk_level', 'NONE')} |\n"
+            md += f"| **Total CVEs** | {vi_report.get('total_cves', 0)} |\n"
+            md += f"| **Critical Priorities** | {vi_report.get('critical_priorities', 0)} |\n"
+            md += f"| **KEV Count** | {vi_report.get('kev_count', 0)} |\n"
+            md += f"| **Public Exploits** | {vi_report.get('public_exploits', 0)} |\n\n"
+
+            if vi_epss:
+                md += "### EPSS Distribution\n\n| Classification | Count |\n| :--- | :--- |\n"
+                epss_dist = vi_report.get('epss_distribution', {})
+                for cls in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "VERY_LOW"]:
+                    count = epss_dist.get(cls, 0)
+                    md += f"| {cls} | {count} |\n"
+                md += "\n"
+
+            if vi_kev:
+                md += "### KEV Analysis\n\n| CVE | Vendor | Product | Ransomware |\n| :--- | :--- | :--- | :--- |\n"
+                kev_list = [k for k in vi_kev if k.get("kev")]
+                for k in kev_list:
+                    md += f"| {k.get('cve', '')} | {k.get('vendor_project', '')} | {k.get('product', '')} | {'Yes' if k.get('ransomware_usage') else 'No'} |\n"
+                md += "\n"
+
+            if vi_exploit:
+                md += "### Exploit Intelligence\n\n| CVE | Public Exploit | Metasploit | Nuclei | Weaponization |\n| :--- | :--- | :--- | :--- | :--- |\n"
+                for e in vi_exploit:
+                    md += f"| {e.get('cve', '')} | {'Yes' if e.get('public_exploit') else 'No'} | {'Yes' if e.get('metasploit') else 'No'} | {'Yes' if e.get('nuclei_template') else 'No'} | {e.get('weaponization_level', 'NONE')} |\n"
+                md += "\n"
+
+            if vi_priorities:
+                md += "### Priority Matrix\n\n| Priority | CVE | Product | Risk Score | Reason |\n| :--- | :--- | :--- | :--- | :--- |\n"
+                for p in vi_priorities[:10]:
+                    md += f"| #{p.get('priority', '')} | {p.get('cve', '')} | {p.get('enriched', {}).get('product', '')} | {p.get('risk_score', 0)}/100 | {p.get('reason', '')} |\n"
+                md += "\n"
+
+            if vi_opportunities:
+                md += "### Attack Opportunities\n\n| Technology | CVE | Score | Vector |\n| :--- | :--- | :--- | :--- |\n"
+                for o in vi_opportunities[:5]:
+                    md += f"| {o.get('technology', '')} | {o.get('cve', '')} | {o.get('attack_opportunity_score', 0)}/100 | {o.get('attack_vector', '')} |\n"
+                md += "\n"
+
+            # Quick Wins
+            quick_wins_data = [p for p in vi_priorities if p.get('risk_score', 0) >= 70][:5]
+            if quick_wins_data:
+                md += "### Quick Wins\n\n| CVE | Product | Risk Score | Remediation |\n| :--- | :--- | :--- | :--- |\n"
+                for qw in quick_wins_data:
+                    enriched = qw.get('enriched', {})
+                    md += f"| {qw.get('cve', '')} | {enriched.get('product', '')} | {qw.get('risk_score', 0)}/100 | Update {enriched.get('product', '')} to patched version |\n"
+                md += "\n"
+
+            md += "---\n"
+        else:
+            md += """
+---
+
+## 7. VULNERABILITY INTELLIGENCE
+
+*Dados de Vulnerability Intelligence não disponíveis. Execute `ghostmirror analyze vulnerabilities` ou `ghostmirror intelligence vulnerabilities` para gerar.*
+
+---\n
+"""
+
+        # 8. Safe Payload Validation
         payload_profile = collected_data["profiles"].get("payload_profile") or {}
         payload_findings = all_findings_data.get("payload_findings") or []
 
@@ -258,7 +340,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
 ---\n
 """
 
-        # 8. Attack Surface Intelligence
+        # 9. Attack Surface Intelligence
         as_profile = collected_data["profiles"].get("attack_surface_profile") or {}
         intel_report = collected_data["profiles"].get("intelligence_report") or {}
         risk_matrix_data = collected_data["profiles"].get("risk_matrix") or {}
@@ -279,7 +361,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
         dns_dkim = "MISSING" if dns.get("dkim_missing", True) else "OK"
 
         md += f"""
-## 8. ATTACK SURFACE INTELLIGENCE
+## 9. ATTACK SURFACE INTELLIGENCE
 
 ### WAF, CDN & Hosting Detection
 
@@ -296,7 +378,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
 
 ---
 
-## 9. RISK MATRIX
+## 10. RISK MATRIX
 
 """
 
@@ -333,7 +415,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
 
 ---
 
-## 10. ATTACK PATHS
+## 11. ATTACK PATHS
 
 """
 
@@ -372,12 +454,12 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
         else:
             md += "*No attack paths modeled. Run `ghostmirror analyze attack-paths` to generate.*\n\n"
 
-        # 9. Executive Summary
+        # 12. Executive Summary
         exec_summary_data = collected_data["profiles"].get("executive_summary") or {}
         summary_text = exec_summary_data.get("summary", intel_report.get("executive_summary", ""))
 
         md += """
-## 11. INTELLIGENCE EXECUTIVE SUMMARY
+## 12. INTELLIGENCE EXECUTIVE SUMMARY
 
 """
         if summary_text:
@@ -387,10 +469,10 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
 
         md += "---\n\n"
 
-        # 10. Pentest Recommendations
+        # 13. Pentest Recommendations
         intel_recommendations = intel_report.get("recommendations", [])
         md += """
-## 12. PENTEST RECOMMENDATIONS
+## 13. PENTEST RECOMMENDATIONS
 
 """
 
@@ -409,12 +491,13 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
         else:
             md += "*Pentest recommendations not available. Run `ghostmirror intelligence` to generate.*\n\n"
 
-        # Next steps
+        # 14. Next steps
         md += """
-## 13. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
+## 14. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
 
 1. **Fase de Mitigação:** Priorize a aplicação de patches e atualizações nas tecnologias que apresentarem CVEs de criticidade Crítica ou Alta.
 2. **Hardening de Rede:** Restrinja o acesso a portas administrativas expostas utilizando regras de firewall estritas.
 3. **Varredura Recorrente:** Execute varreduras programadas para garantir o monitoramento contínuo da superfície de ataque do projeto.
+4. **Vulnerability Intelligence:** Utilize `ghostmirror analyze vulnerabilities` para priorizar riscos com EPSS, KEV e Exploit Intelligence.
 """
         return md
