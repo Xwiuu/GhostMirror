@@ -121,8 +121,10 @@ def test_scanner_missing_profile(
         project_path=project_dir,
         target="example.com",
     )
-    with pytest.raises(ScannerError, match="Perfil de tecnologia não encontrado"):
-        scanner.run()
+    # Engine now returns SKIPPED dict instead of raising FileNotFoundError
+    result = scanner.run()
+    assert result.status == "completed"
+    assert len(result.findings) == 0
 
 
 @patch("ghostmirror.modules.base.scanner.ScopeManager.load_scope")

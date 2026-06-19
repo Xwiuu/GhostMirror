@@ -15,6 +15,12 @@ from ghostmirror.modules.orchestrator.pipeline import get_pipeline_steps
 
 logger = get_logger()
 
+STEP_DEPENDENCIES: dict[str, list[str]] = {
+    "technology_intelligence": ["fingerprint"],
+    "cve_intelligence": ["fingerprint"],
+    "nuclei": ["cve_intelligence", "technology_intelligence"],
+}
+
 
 class FullScanOrchestrator:
     """Orchestrates the execution of a suite of security scanners against an authorized target."""
@@ -97,6 +103,20 @@ class FullScanOrchestrator:
                 if step == "report":
                     continue
 
+                # Check if dependencies were skipped → cascade skip
+                deps = STEP_DEPENDENCIES.get(step, [])
+                all_deps_skipped = all(
+                    s["status"] == ExecutionStatus.SKIPPED.value
+                    for s in context.steps
+                    if s["name"] in deps
+                )
+                if all_deps_skipped and deps:
+                    with context.start_step(step) as tracker:
+                        dep_names = ", ".join(deps)
+                        reason = f"Dependency skipped: {dep_names}"
+                        tracker.mark_skipped(reason=reason)
+                    continue
+
                 with context.start_step(step) as tracker:
                     findings_count = self._run_step(step, tracker)
                     tracker.findings_count = findings_count
@@ -155,6 +175,7 @@ class FullScanOrchestrator:
 
         Catches all exceptions so the pipeline never crashes:
         - ToolNotFoundError → SKIPPED
+        - FileNotFoundError → SKIPPED (dependency profile missing)
         - Anything else → FAILED (logged, step continues)
         """
         try:
@@ -170,6 +191,16 @@ class FullScanOrchestrator:
                 exc,
             )
             tracker.mark_skipped(reason=f"Ferramenta não encontrada: {tool_hint}")
+            return 0
+        except FileNotFoundError as exc:
+            el = logger.bind(run_id=getattr(tracker.context, "run_id", "?"), module=step_name, status="skipped")
+            el.warning(
+                "STEP_SKIPPED run_id={} step={} reason={}",
+                getattr(tracker.context, "run_id", "?"),
+                step_name,
+                exc,
+            )
+            tracker.mark_skipped(reason=str(exc))
             return 0
         except Exception as exc:
             el = logger.bind(run_id=getattr(tracker.context, "run_id", "?"), module=step_name, status="failed")
@@ -231,6 +262,8 @@ class FullScanOrchestrator:
             )
             engine = TechnologyIntelligenceEngine()
             report = engine.analyze_project(self.project_path)
+            if report.get("status") == "skipped":
+                raise FileNotFoundError(report.get("reason", "Dependency not available"))
             return len(report.get("findings", []))
 
         elif step_name == "cve_intelligence":
@@ -239,6 +272,8 @@ class FullScanOrchestrator:
             )
             engine = CVEIntelligenceEngine()
             report = engine.analyze_project(self.project_path)
+            if report.get("status") == "skipped":
+                raise FileNotFoundError(report.get("reason", "Dependency not available"))
             return len(report.get("findings", []))
 
         elif step_name == "nuclei":

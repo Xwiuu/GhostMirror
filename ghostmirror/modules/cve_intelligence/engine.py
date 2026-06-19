@@ -48,10 +48,26 @@ class CVEIntelligenceEngine:
         ssl_findings_path = findings_dir / "ssl.json"
 
         if not tech_profile_path.exists():
-            raise FileNotFoundError(
-                f"Perfil de tecnologia não encontrado em {tech_profile_path}. "
-                "Por favor, execute o scan de fingerprint no alvo primeiro."
-            )
+            logger.warning("Technology profile not found at {}. Skipping CVE Intelligence.", tech_profile_path)
+            return {
+                "target": str(profiles_dir.parent.name),
+                "status": "skipped",
+                "reason": "Technology Intelligence unavailable. CVE Intelligence skipped.",
+                "findings": [],
+                "total_cves": 0,
+                "critical_count": 0,
+                "high_count": 0,
+                "medium_count": 0,
+                "low_count": 0,
+                "informational_count": 0,
+                "exploitable_count": 0,
+                "kev_count": 0,
+                "overall_vulnerability_score": 0,
+                "overall_risk_level": "NONE",
+                "technologies_analyzed": 0,
+                "recommended_nuclei_templates": [],
+                "recommended_scans": [],
+            }
 
         # 1. Load technology fingerprint profile
         with open(tech_profile_path, "r", encoding="utf-8") as f:

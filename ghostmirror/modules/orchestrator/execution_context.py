@@ -82,6 +82,25 @@ class ExecutionContext:
             "steps": self.steps,
         }
 
+    def get_summary(self) -> dict[str, int]:
+        """Return a summary of step execution counts.
+
+        Returns
+        -------
+        dict
+            Keys: executed, skipped, failed, warnings.
+        """
+        executed = sum(1 for s in self.steps if s["status"] == ExecutionStatus.SUCCESS.value)
+        skipped = sum(1 for s in self.steps if s["status"] == ExecutionStatus.SKIPPED.value)
+        failed = sum(1 for s in self.steps if s["status"] == ExecutionStatus.FAILED.value)
+        warnings = sum(1 for s in self.steps if s["status"] == ExecutionStatus.WARNING.value)
+        return {
+            "executed": executed,
+            "skipped": skipped,
+            "failed": failed,
+            "warnings": warnings,
+        }
+
     def get_executed_modules(self) -> list[dict[str, Any]]:
         """Return steps with status SUCCESS."""
         return [s for s in self.steps if s["status"] == ExecutionStatus.SUCCESS.value]

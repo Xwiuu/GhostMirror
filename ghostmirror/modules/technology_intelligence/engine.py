@@ -42,10 +42,21 @@ class TechnologyIntelligenceEngine:
         ssl_findings_path = findings_dir / "ssl.json"
 
         if not tech_profile_path.exists():
-            raise FileNotFoundError(
-                f"Perfil de tecnologia não encontrado em {tech_profile_path}. "
-                "Por favor, execute 'ghostmirror scan fingerprint' no alvo primeiro."
-            )
+            logger.warning("Technology profile not found at {}. Skipping.", tech_profile_path)
+            return {
+                "target": str(profiles_dir.parent.name),
+                "status": "skipped",
+                "reason": "Technology profile unavailable. Fingerprint step was skipped.",
+                "findings": [],
+                "risk_score": 0,
+                "risk_level": "NONE",
+                "technologies": [],
+                "recommended_scans": [],
+                "recommended_nuclei_templates": [],
+                "high_value_assets": [],
+                "potential_entry_points": [],
+                "observations": [],
+            }
 
         # 1. Load technology fingerprint profile
         with open(tech_profile_path, "r", encoding="utf-8") as f:

@@ -86,11 +86,31 @@ class ReportCollector:
             try:
                 with open(timeline_path, "r", encoding="utf-8") as f:
                     data["timeline"] = json.load(f)
+                data["pipeline_summary"] = self._compute_pipeline_summary(
+                    data["timeline"]
+                )
             except Exception as exc:
                 logger.warning("Failed to load timeline {}: {}", timeline_path, exc)
                 data["timeline"] = {}
+                data["pipeline_summary"] = {}
 
         return data
+
+    def _compute_pipeline_summary(
+        self, timeline: dict
+    ) -> dict[str, int]:
+        """Compute pipeline execution counts from the timeline."""
+        steps = timeline.get("steps", [])
+        executed = sum(1 for s in steps if s.get("status") == "completed")
+        skipped = sum(1 for s in steps if s.get("status") == "skipped")
+        failed = sum(1 for s in steps if s.get("status") == "failed")
+        warnings = sum(1 for s in steps if s.get("status") == "warning")
+        return {
+            "executed": executed,
+            "skipped": skipped,
+            "failed": failed,
+            "warnings": warnings,
+        }
 
     def _load_scan_result(self, name: str) -> ScanResultModel | None:
         file_path = self.findings_dir / f"{name.lower()}.json"

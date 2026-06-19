@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from ghostmirror.core.exceptions import ToolNotFoundError
 from ghostmirror.core.logger import get_logger
 from ghostmirror.integrations.nuclei.runner import NucleiRunner
 from ghostmirror.integrations.nuclei.parser import NucleiParser
@@ -80,7 +81,7 @@ class NucleiScanner(ScannerBase):
         # 2. Check Nuclei Installation
         if not self.nuclei_runner.is_installed():
             logger.error("NUCLEI_NOT_INSTALLED")
-            raise ScannerError("Nuclei não está instalado ou disponível no PATH do sistema.")
+            raise ToolNotFoundError("Nuclei is not installed or not available in the system PATH.")
 
         # 3. Setup Directories
         evidence_dir = self.project_path / "evidence" / "nuclei"
@@ -175,7 +176,7 @@ class NucleiScanner(ScannerBase):
 
         except Exception as exc:
             logger.exception("NUCLEI_SCANNER_RUN_FAILED error={}", exc)
-            if isinstance(exc, ScannerError):
+            if isinstance(exc, (ScannerError, ToolNotFoundError)):
                 raise
             raise ScannerError(f"Erro ao executar scan do Nuclei: {exc}") from exc
 

@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from ghostmirror.app.url_normalizer import normalize_url
 from ghostmirror.core.logger import get_logger
 from ghostmirror.core.scope_manager import ScopeManager
 from ghostmirror.modules.base.scanner import ScannerBase, ScannerError, OutOfScopeError
@@ -61,7 +62,11 @@ class OWASPScanner(ScannerBase):
             raise
 
         try:
-            report = self.engine.analyze_project(self.project_path, self.target)
+            try:
+                normalized_target = normalize_url(self.target)
+            except ValueError:
+                normalized_target = self.target
+            report = self.engine.analyze_project(self.project_path, normalized_target)
             owasp_findings = report.get("findings", [])
 
             findings = [

@@ -483,18 +483,18 @@ def test_scanner_engine_failures(tmp_path: Path, mock_cve_kb: CVEKnowledgeBase) 
         encoding="utf-8"
     )
 
-    # Trigger FileNotFoundError in engine due to missing technology_profile.json
+    # Trigger SKIPPED in engine due to missing technology_profile.json
     scanner = CVEIntelligenceScanner(
         project_path=project_dir,
         target="example.com",
         knowledge_dir=mock_cve_kb.knowledge_dir
     )
-    from ghostmirror.modules.base.scanner import ScannerError
-    with pytest.raises(ScannerError) as exc_info:
-        scanner.run()
-    assert "Perfil de tecnologia" in str(exc_info.value)
+    result = scanner.run()
+    assert result.status == "completed"
+    assert len(result.findings) == 0
 
     # Trigger generic exception
+    from ghostmirror.modules.base.scanner import ScannerError
     with patch("ghostmirror.modules.cve_intelligence.engine.CVEIntelligenceEngine.analyze_project", side_effect=ValueError("Unexpected database error")):
         with pytest.raises(ScannerError) as exc_info:
             scanner.run()
