@@ -649,6 +649,216 @@ class HTMLReportRenderer:
             {findings_details_html}
         </div>
 
+        <!-- FINDING INTELLIGENCE -->
+        <h3 class="section-title">5b. Finding Intelligence</h3>
+        <div class="card" style="text-align: left; margin-bottom: 40px;">
+"""
+
+        fi_report = collected_data["profiles"].get("finding_intelligence_report") or {}
+        enriched_findings = collected_data["profiles"].get("enriched_findings") or []
+
+        if fi_report:
+            html_template += f"""
+            <div class="dashboard-grid" style="margin-bottom: 20px;">
+                <div class="card">
+                    <div style="text-align: center;">
+                        <div style="font-size: 2rem; font-weight: bold; color: var(--accent-color);">{fi_report.get('total_findings', 0)}</div>
+                        <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Total Enriched</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div style="text-align: center;">
+                        <div style="font-size: 2rem; font-weight: bold; color: var(--crit-color);">{fi_report.get('kev_count', 0)}</div>
+                        <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">KEV Listed</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div style="text-align: center;">
+                        <div style="font-size: 2rem; font-weight: bold; color: var(--high-color);">{fi_report.get('exploit_count', 0)}</div>
+                        <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Exploits Available</div>
+                    </div>
+                </div>
+            </div>
+            <h4 style="color: var(--accent-color); margin-bottom: 15px;">Priority Distribution</h4>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Priority</th>
+                            <th>Count</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+"""
+            priority_counts = fi_report.get("priority_counts", {})
+            for p in ["P1", "P2", "P3", "P4", "P5"]:
+                count = priority_counts.get(p, 0)
+                p_color = "var(--crit-color)" if p == "P1" else "var(--high-color)" if p == "P2" else "var(--med-color)" if p == "P3" else "var(--low-color)" if p == "P4" else "var(--info-color)"
+                status = "Critical" if p == "P1" else "High" if p == "P2" else "Medium" if p == "P3" else "Low" if p == "P4" else "Info"
+                html_template += f"""
+                        <tr>
+                            <td><strong style="color: {p_color};">{p}</strong></td>
+                            <td style="font-size: 1.2rem; font-weight: bold;">{count}</td>
+                            <td><span class="severity-badge sev-{p.lower().replace('p', '')}">{status}</span></td>
+                        </tr>
+"""
+            html_template += """
+                    </tbody>
+                </table>
+            </div>
+"""
+            if fi_report.get("executive_summary"):
+                summary = fi_report["executive_summary"]
+                html_summary = summary.replace("## Executive Summary", "")
+                html_summary = html_summary.replace("### ", "<h5 style='color: var(--accent-color); margin: 10px 0;'>")
+                html_summary = html_summary.replace("\n", "<br>")
+                html_summary = f"<p>{html_summary}</p>"
+                html_template += f"""
+            <div class="remediation-box" style="margin-top: 20px;">
+                <strong>Executive Summary</strong>
+                <div style="margin-top: 10px; line-height: 1.6;">
+                    {html_summary}
+                </div>
+            </div>
+"""
+        else:
+            html_template += """
+            <p>Finding Intelligence data not available. Run <code>ghostmirror analyze findings</code> or <code>ghostmirror findings intelligence</code> to generate.</p>
+"""
+
+        html_template += """
+        </div>
+
+        <!-- PRIORITY MATRIX -->
+        <h3 class="section-title">5c. Priority Matrix</h3>
+        <div class="card" style="text-align: left; margin-bottom: 40px;">
+"""
+        if fi_report:
+            matrix = fi_report.get("priority_matrix", {})
+            html_template += """
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Priority</th>
+                            <th>Findings</th>
+                            <th>Severity Range</th>
+                            <th>Action Required</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+"""
+            priority_info = {
+                "P1": ("CRITICAL", "Critical - Immediate remediation required", "var(--crit-color)"),
+                "P2": ("HIGH", "High - Remediate within 30 days", "var(--high-color)"),
+                "P3": ("MEDIUM", "Medium - Remediate within 90 days", "var(--med-color)"),
+                "P4": ("LOW", "Low - Remediate within 180 days", "var(--low-color)"),
+                "P5": ("INFO", "Informational - Monitor", "var(--info-color)"),
+            }
+            for p in ["P1", "P2", "P3", "P4", "P5"]:
+                count = matrix.get(p, 0)
+                if count == 0:
+                    continue
+                info = priority_info.get(p, ("INFO", "General", "var(--info-color)"))
+                html_template += f"""
+                        <tr>
+                            <td><strong style="color: {info[2]};">{p}</strong></td>
+                            <td style="font-size: 1.1rem;">{count}</td>
+                            <td><span class="severity-badge sev-{info[0].lower()}">{info[0]}</span></td>
+                            <td>{info[1]}</td>
+                        </tr>
+"""
+            html_template += """
+                    </tbody>
+                </table>
+            </div>
+"""
+        else:
+            html_template += """
+            <p>Priority Matrix not available. Run <code>ghostmirror analyze findings</code> to generate.</p>
+"""
+        html_template += """
+        </div>
+
+        <!-- TOP 10 FINDINGS -->
+        <h3 class="section-title">5d. Top 10 Findings</h3>
+        <div class="card" style="text-align: left; margin-bottom: 40px;">
+"""
+        top_findings = collected_data["profiles"].get("top_findings") or []
+        if top_findings:
+            html_template += """
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Title</th>
+                            <th>Severity</th>
+                            <th>Priority</th>
+                            <th>Confidence</th>
+                            <th>Asset</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+"""
+            for i, tf in enumerate(top_findings, 1):
+                sev = (tf.get("severity") or "INFO").upper()
+                prio = tf.get("priority", "P5")
+                conf = tf.get("confidence", "LOW")
+                asset = tf.get("affected_asset") or "—"
+                title = tf.get("title", "?")
+                html_template += f"""
+                        <tr>
+                            <td>{i}</td>
+                            <td><strong>{title}</strong></td>
+                            <td><span class="severity-badge sev-{sev.lower()}">{sev}</span></td>
+                            <td><span style="color: {'var(--crit-color)' if prio == 'P1' else 'var(--high-color)' if prio == 'P2' else 'var(--med-color)' if prio == 'P3' else 'var(--low-color)'};">{prio}</span></td>
+                            <td>{conf}</td>
+                            <td style="font-size: 0.85rem;">{asset}</td>
+                        </tr>
+"""
+            html_template += """
+                    </tbody>
+                </table>
+            </div>
+"""
+        else:
+            html_template += """
+            <p>Top 10 Findings not available. Run <code>ghostmirror analyze findings</code> to generate.</p>
+"""
+        html_template += """
+        </div>
+
+        <!-- QUICK WINS -->
+        <h3 class="section-title">5e. Quick Wins</h3>
+        <div class="card" style="text-align: left; margin-bottom: 40px;">
+"""
+        quick_wins = collected_data["profiles"].get("quick_wins") or []
+        if quick_wins:
+            for i, qw in enumerate(quick_wins, 1):
+                qw_title = qw.get("title", "?")
+                qw_sev = (qw.get("severity") or "INFO").upper()
+                qw_rec = qw.get("recommendation", "")
+                html_template += f"""
+            <div class="finding-card border-{qw_sev.lower()}" style="margin-bottom: 15px;">
+                <div class="finding-header">
+                    <span class="severity-badge sev-{qw_sev.lower()}">{qw_sev}</span>
+                    <span class="finding-title" style="font-size: 1rem;">#{i} {qw_title}</span>
+                </div>
+                <div class="remediation-box" style="margin-top: 5px;">
+                    <strong>Quick Fix</strong>
+                    <p style="margin-top: 5px;">{qw_rec}</p>
+                </div>
+            </div>
+"""
+        else:
+            html_template += """
+            <p>No quick wins identified.</p>
+"""
+        html_template += """
+        </div>
+
         <!-- OWASP TOP 10 ASSESSMENT -->
         <h3 class="section-title">6. OWASP Top 10 Assessment</h3>
         <div class="card" style="text-align: left; margin-bottom: 40px;">

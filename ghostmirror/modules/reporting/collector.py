@@ -110,6 +110,18 @@ class ReportCollector:
                 "attack_opportunities": self._load_json_list(
                     self.profiles_dir / "vulnerability_intelligence" / "attack_opportunities.json"
                 ),
+                "finding_intelligence_report": self._load_json_dict(
+                    self.profiles_dir / "finding_intelligence_report.json"
+                ),
+                "enriched_findings": self._load_json_list(
+                    self.profiles_dir / "enriched_findings.json"
+                ),
+                "top_findings": self._load_json_list(
+                    self.profiles_dir / "top_findings.json"
+                ),
+                "quick_wins": self._load_json_list(
+                    self.profiles_dir / "quick_wins.json"
+                ),
             },
         }
 

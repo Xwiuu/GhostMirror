@@ -41,6 +41,11 @@ from ghostmirror.models.payload_profile import (
     SafetyLevel,
     PayloadCategory,
 )
+from ghostmirror.models.finding_priority import FindingPriority
+from ghostmirror.models.finding_confidence import ConfidenceLevel
+from ghostmirror.models.finding_impact import BusinessImpact, TechnicalImpact
+from ghostmirror.models.enriched_finding import EnrichedFinding
+from ghostmirror.models.finding_intelligence_report import FindingIntelligenceReport
 
 __all__ = [
     "ProjectModel",
@@ -81,5 +86,11 @@ __all__ = [
     "PayloadProfile",
     "SafetyLevel",
     "PayloadCategory",
+    "FindingPriority",
+    "ConfidenceLevel",
+    "BusinessImpact",
+    "TechnicalImpact",
+    "EnrichedFinding",
+    "FindingIntelligenceReport",
 ]
 

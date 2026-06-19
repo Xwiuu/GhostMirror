@@ -166,7 +166,122 @@ Abaixo estão listadas as vulnerabilidades conhecidas (CVEs) correlacionadas com
         else:
             md += "Nenhuma vulnerabilidade foi detectada neste assessment.\n\n"
 
-        # 5. OWASP Top 10 Assessment
+        # 5b. Finding Intelligence
+
+        fi_report = collected_data["profiles"].get("finding_intelligence_report") or {}
+        enriched_findings = collected_data["profiles"].get("enriched_findings") or []
+
+        if fi_report:
+            priority_counts = fi_report.get("priority_counts", {})
+            kev_count = fi_report.get("kev_count", 0)
+            exploit_count = fi_report.get("exploit_count", 0)
+            total = fi_report.get("total_findings", 0)
+
+            md += f"""
+A Finding Intelligence Engine enriqueceu **{total}** findings com metadados profissionais.
+
+### Priority Distribution
+
+| Priority | Count | Status |
+| :--- | :--- | :--- |
+"""
+            for p in ["P1", "P2", "P3", "P4", "P5"]:
+                count = priority_counts.get(p, 0)
+                status = "Critical" if p == "P1" else "High" if p == "P2" else "Medium" if p == "P3" else "Low" if p == "P4" else "Info"
+                md += f"| **{p}** | {count} | {status} |\n"
+
+            md += f"""
+**KEV Listed:** {kev_count}
+**Exploits Available:** {exploit_count}
+
+#### Executive Summary
+
+{fi_report.get('executive_summary', '')}
+
+"""
+
+        else:
+            md += """
+*Finding Intelligence data not available. Run `ghostmirror analyze findings` or `ghostmirror findings intelligence` to generate.*
+
+"""
+
+        # 5c. Priority Matrix
+        md += """
+---
+
+## 5c. Priority Matrix
+
+"""
+
+        if fi_report:
+            matrix = fi_report.get("priority_matrix", {})
+            md += """
+| Priority | Findings | Severity Range | Action Required |
+| :--- | :--- | :--- | :--- |
+"""
+            priority_info = {
+                "P1": ("CRITICAL", "Critical - Immediate remediation required"),
+                "P2": ("HIGH", "High - Remediate within 30 days"),
+                "P3": ("MEDIUM", "Medium - Remediate within 90 days"),
+                "P4": ("LOW", "Low - Remediate within 180 days"),
+                "P5": ("INFO", "Informational - Monitor"),
+            }
+            for p in ["P1", "P2", "P3", "P4", "P5"]:
+                count = matrix.get(p, 0)
+                if count == 0:
+                    continue
+                info = priority_info.get(p, ("INFO", "General"))
+                md += f"| **{p}** | {count} | {info[0]} | {info[1]} |\n"
+        else:
+            md += "*Priority Matrix not available.*\n\n"
+
+        # 5d. Top 10 Findings
+        md += """
+---
+
+## 5d. Top 10 Findings
+
+"""
+
+        top_findings = collected_data["profiles"].get("top_findings") or []
+        if top_findings:
+            md += """
+| # | Title | Severity | Priority | Confidence | Asset |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+"""
+            for i, tf in enumerate(top_findings, 1):
+                sev = (tf.get("severity") or "INFO").upper()
+                prio = tf.get("priority", "P5")
+                conf = tf.get("confidence", "LOW")
+                asset = tf.get("affected_asset") or "—"
+                title = tf.get("title", "?")
+                md += f"| {i} | **{title}** | {sev} | {prio} | {conf} | {asset} |\n"
+        else:
+            md += "*Top 10 Findings not available.*\n\n"
+
+        # 5e. Quick Wins
+        md += """
+---
+
+## 5e. Quick Wins
+
+"""
+
+        quick_wins = collected_data["profiles"].get("quick_wins") or []
+        if quick_wins:
+            for i, qw in enumerate(quick_wins, 1):
+                qw_title = qw.get("title", "?")
+                qw_sev = (qw.get("severity") or "INFO").upper()
+                qw_rec = qw.get("recommendation", "")
+                md += f"""### {i}. [{qw_sev}] {qw_title}
+- **Quick Fix:** {qw_rec}
+
+"""
+        else:
+            md += "*No quick wins identified.*\n\n"
+
+        # 6. OWASP Top 10 Assessment
         md += """
 ---
 
@@ -186,7 +301,7 @@ Abaixo estão listadas as vulnerabilidades conhecidas (CVEs) correlacionadas com
             md += f"""
 A avaliação OWASP Top 10 Light identificou **{owasp_total}** achados em **{len(owasp_categories)}** categorias.
 
-**OWASP Risk Score:** {owasp_score}/100 — **{owasp_level}**
+            **OWASP Risk Score:** {owasp_score}/100 - **{owasp_level}**
 
 ### Categorias Avaliadas
 

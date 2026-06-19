@@ -2680,6 +2680,258 @@ def cmd_lab_create_project(
         raise typer.Exit(code=1)
 
 
+# --------------------------------------------------------------------------- #
+# Findings Intelligence sub-app
+# --------------------------------------------------------------------------- #
+findings_app = typer.Typer(help="Finding Intelligence Engine: enriquece, prioriza e analisa findings.")
+app.add_typer(findings_app, name="findings")
+
+
+@findings_app.command("intelligence", help="Executa o Finding Intelligence Engine para enriquecer todos os findings.")
+def cmd_findings_intelligence(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.finding_intelligence.engine import FindingIntelligenceEngine
+
+    engine = FindingIntelligenceEngine()
+    try:
+        with console.status("[bold green]Executando Finding Intelligence Engine..."):
+            report = engine.analyze_project(handle.path)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante Finding Intelligence:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("FINDING INTELLIGENCE COMPLETE\n")
+    console.print(f"Total Findings: [bold]{report.total_findings}[/]")
+    console.print(f"Enriched: [bold]{report.total_enriched}[/]")
+    console.print(f"\nPriority Distribution:")
+    for p in ["P1", "P2", "P3", "P4", "P5"]:
+        count = report.priority_counts.get(p, 0)
+        color = "red" if p == "P1" else "orange1" if p == "P2" else "yellow" if p == "P3" else "cyan" if p == "P4" else "dim"
+        console.print(f"  {p}: [{color}]{count}[/]")
+    console.print(f"\nKEV Count: [bold]{report.kev_count}[/]")
+    console.print(f"Exploit Count: [bold]{report.exploit_count}[/]")
+    console.print(f"\nQuick Wins: [bold]{len(report.quick_wins)}[/]")
+    console.print(f"\nTop Finding: {report.top_findings[0].title if report.top_findings else 'N/A'}")
+    console.print("---")
+
+
+@findings_app.command("priority", help="Exibe a matriz de prioridades dos findings enriquecidos.")
+def cmd_findings_priority(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    import json
+    report_path = handle.path / "profiles" / "finding_intelligence_report.json"
+    if not report_path.exists():
+        console.print("[yellow]Execute 'ghostmirror findings intelligence' primeiro.[/]")
+        raise typer.Exit(code=1)
+
+    with open(report_path, "r", encoding="utf-8") as f:
+        report = json.load(f)
+
+    matrix = report.get("priority_matrix", {})
+    console.print("\n[bold cyan]Priority Matrix[/]\n")
+    table = Table(box=box.ROUNDED, header_style="bold cyan")
+    table.add_column("Priority", style="bold")
+    table.add_column("Count", justify="right")
+    table.add_column("Status")
+    for p in ["P1", "P2", "P3", "P4", "P5"]:
+        count = matrix.get(p, 0)
+        color = "red" if p == "P1" else "orange1" if p == "P2" else "yellow" if p == "P3" else "green" if p == "P4" else "dim"
+        status = "🔴 Crítico" if p == "P1" else "🟠 Alto" if p == "P2" else "🟡 Médio" if p == "P3" else "🟢 Baixo" if p == "P4" else "⚪ Info"
+        table.add_row(f"[{color}]{p}[/]", str(count), status)
+    console.print(table)
+
+    total = sum(matrix.values())
+    console.print(f"\nTotal: [bold]{total}[/] findings classified")
+
+
+@findings_app.command("top10", help="Exibe o Top 10 Findings ordenados por prioridade.")
+def cmd_findings_top10(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    import json
+    top_path = handle.path / "profiles" / "top_findings.json"
+    if not top_path.exists():
+        console.print("[yellow]Execute 'ghostmirror findings intelligence' primeiro.[/]")
+        raise typer.Exit(code=1)
+
+    with open(top_path, "r", encoding="utf-8") as f:
+        top = json.load(f)
+
+    console.print("\n[bold cyan]Top 10 Findings[/bold cyan]\n")
+    for i, finding in enumerate(top, 1):
+        sev = finding.get("severity", "INFO").upper()
+        sev_color = "red" if sev == "CRITICAL" else "orange1" if sev == "HIGH" else "yellow" if sev == "MEDIUM" else "cyan"
+        priority = finding.get("priority", "P5")
+        p_color = "red" if priority == "P1" else "orange1" if priority == "P2" else "yellow" if priority == "P3" else "dim"
+        console.print(f"#{i} [{sev_color}][{sev}][/] [{p_color}]{priority}[/] — {finding.get('title', '?')}")
+        console.print(f"   Asset: {finding.get('affected_asset', '—')} | Component: {finding.get('affected_component', '—')}")
+        console.print(f"   Confidence: {finding.get('confidence', 'LOW')} | Likelihood: {finding.get('likelihood', '—')} | Exploitability: {finding.get('exploitability', '—')}")
+        if finding.get("recommendation"):
+            console.print(f"   → {finding['recommendation'][:120]}")
+        console.print()
+
+
+@findings_app.command("quick-wins", help="Lista correções rápidas identificadas.")
+def cmd_findings_quick_wins(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    import json
+    qw_path = handle.path / "profiles" / "quick_wins.json"
+    if not qw_path.exists():
+        console.print("[yellow]Execute 'ghostmirror findings intelligence' primeiro.[/]")
+        raise typer.Exit(code=1)
+
+    with open(qw_path, "r", encoding="utf-8") as f:
+        wins = json.load(f)
+
+    if not wins:
+        console.print("[green]Nenhum quick win identificado.[/]")
+        return
+
+    console.print(f"\n[bold cyan]Quick Wins ({len(wins)} encontrados)[/bold cyan]\n")
+    for i, win in enumerate(wins, 1):
+        console.print(f"{i}. {win.get('title', '?')}")
+        console.print(f"   Severity: {win.get('severity', 'INFO')} | Priority: {win.get('priority', 'P5')}")
+        if win.get("recommendation"):
+            console.print(f"   → {win['recommendation'][:180]}")
+        console.print()
+
+
+# --------------------------------------------------------------------------- #
+# Add analyze findings command
+# --------------------------------------------------------------------------- #
+@analyze_app.command("findings", help="Finding Intelligence Engine - enriquece todos os findings do projeto.")
+def cmd_analyze_findings(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Executa o Finding Intelligence Engine para enriquecer todos os findings existentes."""
+    from ghostmirror.modules.finding_intelligence.engine import FindingIntelligenceEngine
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    engine = FindingIntelligenceEngine()
+    try:
+        with console.status("[bold green]Executando Finding Intelligence Engine..."):
+            report = engine.analyze_project(handle.path)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante Finding Intelligence:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("FINDING INTELLIGENCE COMPLETE\n")
+    console.print(f"Total Findings: [bold]{report.total_findings}[/]")
+    console.print(f"Enriched: [bold]{report.total_enriched}[/]")
+    console.print(f"\nPriority Distribution:")
+    for p in ["P1", "P2", "P3", "P4", "P5"]:
+        count = report.priority_counts.get(p, 0)
+        color = "red" if p == "P1" else "orange1" if p == "P2" else "yellow" if p == "P3" else "green" if p == "P4" else "dim"
+        console.print(f"  {p}: [{color}]{count}[/]")
+    console.print(f"\nKEV Count: [bold]{report.kev_count}[/]")
+    console.print(f"Exploit Count: [bold]{report.exploit_count}[/]")
+    console.print(f"\nQuick Wins: [bold]{len(report.quick_wins)}[/]")
+    console.print("---")
+
+
 @lab_app.command("benchmark", help="Executa benchmark completo (full-scan deep) em um laboratório.")
 def cmd_lab_benchmark(
     lab_id: str = typer.Argument(..., help="ID do laboratório (ex: juice-shop)"),
