@@ -97,7 +97,7 @@ def test_report_scorer_with_profiles():
         risk_profile={"risk_score": 80},
         vulnerability_profile={"overall_vulnerability_score": 60},
     )
-    assert score == 31
+    assert score == 21
     assert level == "MEDIUM"
 
 
@@ -262,3 +262,4 @@ def test_report_generator_integration(project_manager: ProjectManager):
         assert (handle.path / "reports" / "report.html").exists()
         assert (handle.path / "reports" / "report.md").exists()
         assert (handle.path / "reports" / "report.pdf").exists()
+

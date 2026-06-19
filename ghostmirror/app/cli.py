@@ -782,6 +782,96 @@ def cmd_doctor(
         raise typer.Exit(code=1)
 
 
+# --------------------------------------------------------------------------- #
+# Intelligence command
+# --------------------------------------------------------------------------- #
+@app.command("intelligence", help="Executa o motor completo de inteligência ofensiva (Attack Surface, Scoring, Attack Paths).")
+def cmd_intelligence(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Executa o Intelligence Engine completo no projeto. Produz Attack Surface Profile, Risk Matrix, Attack Paths, Executive Summary e Recommendations."""
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado. Por favor, crie um projeto primeiro.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.intelligence.engine import IntelligenceEngine
+
+    engine = IntelligenceEngine()
+    try:
+        with console.status("[bold green]Executando Intelligence Engine...[/]"):
+            report = engine.analyze_project(handle.path)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante a execução do Intelligence Engine:[/] {exc}")
+        logger.exception("INTELLIGENCE_FAILED error={}", exc)
+        raise typer.Exit(code=1)
+
+    asp = report.attack_surface_profile
+
+    console.print("---")
+    console.print("INTELLIGENCE COMPLETE\n")
+    console.print("Target:")
+    console.print(report.target)
+    console.print("\nAttack Surface Score:")
+    console.print(f"{report.overall_attack_surface_score}/100 — {asp.classification if asp else 'N/A'}")
+    console.print("\nRisk Score:")
+    console.print(f"{report.overall_risk_score}/100")
+    console.print("\nSecurity Score:")
+    console.print(f"{report.overall_security_score}/100")
+
+    if report.risk_matrix:
+        console.print(f"\nRisk Matrix Overall:")
+        console.print(report.risk_matrix.overall_level)
+
+    console.print("\nAttack Paths:")
+    console.print(str(len(report.attack_paths)))
+    console.print("\nRecommendations:")
+    console.print(str(len(report.recommendations)))
+    console.print("\nWAF:")
+    waf_v = asp.waf.vendor if asp and asp.waf.detected else "Not Detected"
+    console.print(waf_v)
+    console.print("\nCDN:")
+    cdn_v = asp.cdn.vendor if asp and asp.cdn.detected else "Not Detected"
+    console.print(cdn_v)
+    console.print("\nHosting:")
+    host_v = asp.hosting.provider if asp and asp.hosting.detected else "Not Identified"
+    console.print(host_v)
+    console.print("\nDNS Issues:")
+    if asp:
+        issues = []
+        if asp.dns.spf_missing: issues.append("SPF")
+        if asp.dns.dmarc_missing: issues.append("DMARC")
+        if asp.dns.dkim_missing: issues.append("DKIM")
+        console.print(', '.join(issues) if issues else "None")
+    console.print("\nProfiles saved:")
+    console.print("  attack_surface_profile.json, risk_matrix.json, attack_paths.json,")
+    console.print("  executive_summary.json, waf_profile.json, cdn_profile.json,")
+    console.print("  hosting_profile.json, dns_profile.json")
+    console.print("---")
+
+    handle_error_py = None
+
+    if report.attack_surface_profile and report.attack_surface_profile.attack_surface_score >= 61:
+        console.print(f"\n[bold orange1]⚠ High Attack Surface: {report.attack_surface_profile.attack_surface_score}/100[/]")
+    if report.overall_risk_score >= 61:
+        console.print(f"[bold red]⚠ Elevated Risk Score: {report.overall_risk_score}/100[/]")
+
+
 @app.command("health-check", help="Executa verificações rápidas de saúde do sistema.")
 def cmd_health_check(ctx: typer.Context) -> None:
     app_ctx: AppContext = ctx.obj
@@ -1823,6 +1913,294 @@ def cmd_analyze_cves(
     console.print("---")
 
 
+@analyze_app.command("attack-surface", help="Analisa a superfície de ataque (WAF, CDN, Hosting, DNS, portas, serviços).")
+def cmd_analyze_attack_surface(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Analisa a superfície de ataque do projeto: WAF, CDN, Hosting, DNS e exposição de portas."""
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado. Por favor, crie um projeto primeiro.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.intelligence.attack_surface import AttackSurfaceAnalyzer
+    from ghostmirror.modules.intelligence.scoring import ScoringEngine
+
+    analyzer = AttackSurfaceAnalyzer()
+    target = "Unknown"
+    tech_profile = None
+
+    import json
+    tech_path = handle.path / "profiles" / "technology_profile.json"
+    if tech_path.exists():
+        try:
+            with open(tech_path, "r", encoding="utf-8") as f:
+                tech_data = json.load(f)
+            target = tech_data.get("target", target)
+            from ghostmirror.models.fingerprint import FingerprintProfile
+            tech_profile = FingerprintProfile.model_validate(tech_data)
+        except Exception:
+            pass
+
+    findings_dir = handle.path / "findings"
+    headers_findings = None
+    nmap_findings = None
+    h_path = findings_dir / "headers.json"
+    if h_path.exists():
+        try:
+            with open(h_path, "r", encoding="utf-8") as f:
+                headers_findings = json.load(f)
+        except Exception:
+            pass
+    n_path = findings_dir / "nmap.json"
+    if n_path.exists():
+        try:
+            with open(n_path, "r", encoding="utf-8") as f:
+                nmap_findings = json.load(f)
+        except Exception:
+            pass
+
+    profile = analyzer.analyze(target=target, technology_profile=tech_profile, headers_findings=headers_findings, nmap_findings=nmap_findings)
+    score, classification = ScoringEngine.calculate_attack_surface_score(profile)
+    profile.attack_surface_score = score
+    profile.classification = classification
+    analyzer.save_profiles(handle.path, profile)
+
+    console.print("---")
+    console.print("ATTACK SURFACE ANALYSIS COMPLETE\n")
+    console.print("Target:")
+    console.print(target)
+    console.print("\nAttack Surface Score:")
+    console.print(f"{score}/100 — {classification}")
+    console.print("\nWAF:")
+    console.print(f"{'✓ ' + profile.waf.vendor if profile.waf.detected else '✗ Not Detected'} (Confidence: {profile.waf.confidence}%)")
+    console.print("\nCDN:")
+    console.print(f"{'✓ ' + profile.cdn.vendor if profile.cdn.detected else '✗ Not Detected'} (Confidence: {profile.cdn.confidence}%)")
+    console.print("\nHosting:")
+    console.print(f"{'✓ ' + profile.hosting.provider if profile.hosting.detected else '✗ Not Identified'} (Confidence: {profile.hosting.confidence}%)")
+    console.print("\nDNS Records:")
+    console.print(str(len(profile.dns.records)))
+    dns_issues = []
+    if profile.dns.spf_missing: dns_issues.append("SPF missing")
+    if profile.dns.dmarc_missing: dns_issues.append("DMARC missing")
+    if profile.dns.dkim_missing: dns_issues.append("DKIM missing")
+    console.print(f"Issues: {', '.join(dns_issues) if dns_issues else 'None'}")
+    console.print("\nOpen Ports:")
+    console.print(', '.join(str(p) for p in profile.open_ports) if profile.open_ports else 'None')
+    console.print("\nTechnologies:")
+    console.print(str(len(profile.technologies)))
+    console.print("\nProfiles Saved:")
+    console.print("  attack_surface_profile.json, waf_profile.json, cdn_profile.json, hosting_profile.json, dns_profile.json")
+    console.print("---")
+
+
+@analyze_app.command("risk", help="Calcula e exibe o Risk Score consolidado do projeto.")
+def cmd_analyze_risk(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Calcula o Risk Score consolidado com base em findings, CVEs, exposição e superfície de ataque."""
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado. Por favor, crie um projeto primeiro.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.intelligence.scoring import ScoringEngine, classify_score
+    from ghostmirror.modules.intelligence.risk_matrix import RiskMatrixGenerator
+
+    import json
+
+    def load_json(path):
+        if path.exists():
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                return None
+        return None
+
+    as_profile = load_json(handle.path / "profiles" / "attack_surface_profile.json") or {}
+    cve_data = load_json(handle.path / "profiles" / "vulnerability_profile.json") or {}
+
+    cve_matches = cve_data.get("matches", [])
+    cve_count = len(cve_matches)
+    exploit_available = any(c.get("matched_cve", {}).get("exploit_available", False) for c in cve_matches)
+    kev_count = sum(1 for c in cve_matches if c.get("matched_cve", {}).get("kev_listed", False))
+
+    all_findings = []
+    for fname in ["headers", "ssl", "nmap", "fingerprint"]:
+        fdata = load_json(handle.path / "findings" / f"{fname}.json")
+        if fdata and "findings" in fdata:
+            all_findings.extend(fdata["findings"])
+
+    critical_count = sum(1 for f in all_findings if f.get("severity", "").upper() == "CRITICAL")
+    high_count = sum(1 for f in all_findings if f.get("severity", "").upper() == "HIGH")
+    medium_count = sum(1 for f in all_findings if f.get("severity", "").upper() == "MEDIUM")
+
+    attack_surface_score = as_profile.get("attack_surface_score", 0)
+    open_ports = as_profile.get("open_ports", [])
+    waf_detected = as_profile.get("waf", {}).get("detected", False)
+    cdn_detected = as_profile.get("cdn", {}).get("detected", False)
+
+    risk_score, risk_level = ScoringEngine.calculate_risk_score(
+        attack_surface_score=attack_surface_score,
+        findings_count=len(all_findings),
+        critical_findings=critical_count,
+        high_findings=high_count,
+        medium_findings=medium_count,
+        cve_count=cve_count,
+        exploit_available=exploit_available,
+        kev_listed=kev_count > 0,
+    )
+
+    security_score, _ = ScoringEngine.overall_security_score(
+        attack_surface_score=attack_surface_score,
+        risk_score=risk_score,
+    )
+
+    risk_matrix = RiskMatrixGenerator.generate(
+        attack_surface_score=attack_surface_score,
+        critical_findings=critical_count,
+        high_findings=high_count,
+        medium_findings=medium_count,
+        total_findings=len(all_findings),
+        cve_count=cve_count,
+        exploit_available=exploit_available,
+        kev_count=kev_count,
+        open_ports_count=len(open_ports),
+        waf_detected=waf_detected,
+        cdn_detected=cdn_detected,
+    )
+
+    matrix_path = handle.path / "profiles" / "risk_matrix.json"
+    matrix_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(matrix_path, "w", encoding="utf-8") as f:
+        json.dump(risk_matrix.model_dump(mode="json"), f, indent=2)
+
+    console.print("---")
+    console.print("RISK ANALYSIS COMPLETE\n")
+    console.print("Target:")
+    target = as_profile.get("target", cve_data.get("target", "Unknown"))
+    console.print(target)
+    console.print("\n--- Summary Scores ---")
+    console.print(f"Attack Surface Score: {attack_surface_score}/100 — {classify_score(attack_surface_score)}")
+    console.print(f"Risk Score: {risk_score}/100 — {risk_level}")
+    console.print(f"Security Score: {security_score}/100 — {classify_score(security_score)}")
+    console.print("\n--- Risk Matrix ---")
+    console.print(f"Likelihood: {risk_matrix.likelihood.score}/100 — {risk_matrix.likelihood.level}")
+    console.print(f"Impact: {risk_matrix.impact.score}/100 — {risk_matrix.impact.level}")
+    console.print(f"Exploitability: {risk_matrix.exploitability.score}/100 — {risk_matrix.exploitability.level}")
+    console.print(f"Exposure: {risk_matrix.exposure.score}/100 — {risk_matrix.exposure.level}")
+    console.print(f"Business Risk: {risk_matrix.business_risk.score}/100 — {risk_matrix.business_risk.level}")
+    console.print(f"\nOverall Risk Level: [bold]{risk_matrix.overall_level}[/]")
+    console.print("\n--- Findings Summary ---")
+    console.print(f"Total: {len(all_findings)} | Critical: {critical_count} | High: {high_count} | Medium: {medium_count}")
+    console.print(f"CVEs: {cve_count} | Exploit Available: {'Yes' if exploit_available else 'No'} | KEV: {kev_count}")
+    console.print("---")
+
+
+@analyze_app.command("attack-paths", help="Modela possíveis caminhos de ataque baseados em inteligência correlacionada.")
+def cmd_analyze_attack_paths(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+    show_all: bool = typer.Option(False, "--all", "-a", help="Exibe todos os passos e mitigações"),
+) -> None:
+    """Modela possíveis caminhos de ataque sem executar exploração. Usa dados correlacionados de tecnologia, CVEs e OWASP."""
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado. Por favor, crie um projeto primeiro.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.intelligence.attack_paths import AttackPathEngine
+
+    engine = AttackPathEngine()
+    try:
+        with console.status("[bold green]Modelando Attack Paths..."):
+            paths = engine.generate_paths(handle.path)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao modelar attack paths:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    # Save attack paths
+    import json
+    paths_file = handle.path / "profiles" / "attack_paths.json"
+    paths_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(paths_file, "w", encoding="utf-8") as f:
+        json.dump([p.model_dump(mode="json") for p in paths], f, indent=2, ensure_ascii=False)
+
+    console.print("---")
+    console.print("ATTACK PATHS MODELED\n")
+    console.print(f"Total Paths: {len(paths)}")
+    console.print()
+
+    for ap in paths:
+        from rich.table import Table
+        table = Table(box=box.ROUNDED, show_header=True, header_style="bold cyan")
+        table.add_column("Step", style="green")
+        table.add_column("Label")
+        table.add_column("Detail")
+        for step in ap.steps:
+            table.add_row(str(step.order), step.label, step.detail or "")
+        console.print(f"[bold]Path #{ap.path_id}: {ap.title}[/]")
+        console.print(f"  Risk: {ap.risk_score}/100 ({ap.risk_level}) | Likelihood: {ap.likelihood} | Impact: {ap.impact}")
+        console.print(f"  {ap.description}")
+        console.print(table)
+        if show_all and ap.mitigations:
+            console.print("  [bold cyan]Mitigations:[/]")
+            for m in ap.mitigations:
+                console.print(f"    • {m}")
+        console.print()
+
+    if not paths or (len(paths) == 1 and paths[0].title == "No attack paths identified"):
+        console.print("[yellow]No actionable attack paths could be modeled. More intelligence data may be needed.[/]")
+
+    console.print(f"\n[green]✓ Attack paths saved to: {paths_file}[/]")
+    console.print("---")
+
+
 # --------------------------------------------------------------------------- #
 # Nuclei template updater sub-app
 # --------------------------------------------------------------------------- #
@@ -2054,6 +2432,7 @@ def cmd_lab_benchmark(
     except Exception as exc:
         console.print(f"[bold red]Erro:[/] {exc}")
         raise typer.Exit(code=1)
+
 
 
 

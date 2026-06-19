@@ -258,9 +258,160 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
 ---\n
 """
 
-        # 7. Next steps
+        # 8. Attack Surface Intelligence
+        as_profile = collected_data["profiles"].get("attack_surface_profile") or {}
+        intel_report = collected_data["profiles"].get("intelligence_report") or {}
+        risk_matrix_data = collected_data["profiles"].get("risk_matrix") or {}
+        attack_paths_data = collected_data["profiles"].get("attack_paths") or []
+
+        waf = as_profile.get("waf", {})
+        cdn = as_profile.get("cdn", {})
+        hosting = as_profile.get("hosting", {})
+        dns = as_profile.get("dns", {})
+
+        waf_status = f"{waf.get('vendor', 'N/A')} (Confidence: {waf.get('confidence', 0)}%)" if waf.get("detected") else "Not Detected"
+        cdn_status = f"{cdn.get('vendor', 'N/A')} (Confidence: {cdn.get('confidence', 0)}%)" if cdn.get("detected") else "Not Detected"
+        hosting_status = f"{hosting.get('provider', 'N/A')} (Confidence: {hosting.get('confidence', 0)}%)" if hosting.get("detected") else "Not Identified"
+
+        dns_record_count = sum(len(v) for v in dns.get("records", {}).values()) if isinstance(dns.get("records"), dict) else 0
+        dns_spf = "MISSING" if dns.get("spf_missing", True) else "OK"
+        dns_dmarc = "MISSING" if dns.get("dmarc_missing", True) else "OK"
+        dns_dkim = "MISSING" if dns.get("dkim_missing", True) else "OK"
+
+        md += f"""
+## 8. ATTACK SURFACE INTELLIGENCE
+
+### WAF, CDN & Hosting Detection
+
+| Category | Status | Detail |
+| :--- | :--- | :--- |
+| WAF | {'✓ Detected' if waf.get('detected') else '✗ Not Detected'} | {waf_status} |
+| CDN | {'✓ Detected' if cdn.get('detected') else '✗ Not Detected'} | {cdn_status} |
+| Hosting | {'✓ Identified' if hosting.get('detected') else '✗ Not Identified'} | {hosting_status} |
+| DNS Records | {dns_record_count} records | SPF: {dns_spf}, DMARC: {dns_dmarc}, DKIM: {dns_dkim} |
+
+### Open Ports & Services
+- **Ports:** {', '.join(str(p) for p in as_profile.get('open_ports', [])) or 'None'}
+- **Services:** {', '.join(as_profile.get('services_exposed', [])) or 'None identified'}
+
+---
+
+## 9. RISK MATRIX
+
+"""
+
+        if risk_matrix_data:
+            md += """
+| Dimension | Score | Level | Description |
+| :--- | :--- | :--- | :--- |
+"""
+            for entry_key in ["likelihood", "impact", "exploitability", "exposure", "business_risk"]:
+                entry = risk_matrix_data.get(entry_key, {})
+                cat = entry.get("category", entry_key.capitalize())
+                score_val = entry.get("score", 0)
+                level_val = entry.get("level", "Unknown")
+                desc = entry.get("description", "")
+                md += f"| **{cat}** | {score_val}/100 | {level_val} | {desc} |\n"
+
+            overall_level = risk_matrix_data.get("overall_level", "Unknown")
+            md += f"""
+**Overall Risk Level:** {overall_level}
+
+"""
+        else:
+            md += "*Risk Matrix not available. Run `ghostmirror analyze attack-surface` to generate.*\n\n"
+
+        as_score = intel_report.get("overall_attack_surface_score", as_profile.get("attack_surface_score", 0))
+        risk_score = intel_report.get("overall_risk_score", 0)
+        security_score = intel_report.get("overall_security_score", 0)
+
+        md += f"""
+### Score Overview
+- **Attack Surface Score:** {as_score}/100
+- **Risk Score:** {risk_score}/100
+- **Overall Security Score:** {security_score}/100
+
+---
+
+## 10. ATTACK PATHS
+
+"""
+
+        if attack_paths_data:
+            for ap in attack_paths_data[:5]:
+                ap_title = ap.get("title", "Unknown Path")
+                ap_desc = ap.get("description", "")
+                ap_risk_score = ap.get("risk_score", 0)
+                ap_risk_level = ap.get("risk_level", "INFO")
+                ap_likelihood = ap.get("likelihood", "Unknown")
+                ap_impact = ap.get("impact", "Unknown")
+                ap_steps = ap.get("steps", [])
+                ap_mitigations = ap.get("mitigations", [])
+
+                md += f"""
+### {ap_title}
+
+**Description:** {ap_desc}
+**Risk Score:** {ap_risk_score}/100 | **Risk Level:** {ap_risk_level} | **Likelihood:** {ap_likelihood} | **Impact:** {ap_impact}
+
+#### Attack Chain
+"""
+                for step in ap_steps:
+                    s_order = step.get("order", 0)
+                    s_label = step.get("label", "")
+                    s_detail = step.get("detail", "")
+                    md += f"  {s_order}. **{s_label}** — {s_detail}\n"
+
+                if ap_mitigations:
+                    md += """
+#### Mitigations
+"""
+                    for m in ap_mitigations:
+                        md += f"- {m}\n"
+                md += "\n---\n"
+        else:
+            md += "*No attack paths modeled. Run `ghostmirror analyze attack-paths` to generate.*\n\n"
+
+        # 9. Executive Summary
+        exec_summary_data = collected_data["profiles"].get("executive_summary") or {}
+        summary_text = exec_summary_data.get("summary", intel_report.get("executive_summary", ""))
+
         md += """
-## 8. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
+## 11. INTELLIGENCE EXECUTIVE SUMMARY
+
+"""
+        if summary_text:
+            md += summary_text + "\n\n"
+        else:
+            md += "*Executive Summary not available. Run `ghostmirror intelligence` to generate.*\n\n"
+
+        md += "---\n\n"
+
+        # 10. Pentest Recommendations
+        intel_recommendations = intel_report.get("recommendations", [])
+        md += """
+## 12. PENTEST RECOMMENDATIONS
+
+"""
+
+        if intel_recommendations:
+            for rec in intel_recommendations:
+                rec_type = rec.get("assessment_type", rec.get("type", "Assessment"))
+                rec_priority = rec.get("priority", "Medium")
+                rec_justification = rec.get("justification", "")
+                rec_refs = rec.get("findings_reference", [])
+                ref_str = ", ".join(rec_refs[:3]) if rec_refs else ""
+                md += f"- **[Priority: {rec_priority}] {rec_type}**\n"
+                md += f"  - {rec_justification}\n"
+                if ref_str:
+                    md += f"  - References: {ref_str}\n"
+                md += "\n"
+        else:
+            md += "*Pentest recommendations not available. Run `ghostmirror intelligence` to generate.*\n\n"
+
+        # Next steps
+        md += """
+## 13. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
 
 1. **Fase de Mitigação:** Priorize a aplicação de patches e atualizações nas tecnologias que apresentarem CVEs de criticidade Crítica ou Alta.
 2. **Hardening de Rede:** Restrinja o acesso a portas administrativas expostas utilizando regras de firewall estritas.

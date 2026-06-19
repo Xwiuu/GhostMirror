@@ -107,7 +107,7 @@ def test_full_scan_orchestrator_success(
 
     # 4. Verify results
     assert timeline["profile"] == "standard"
-    assert len(timeline["steps"]) == 9  # 8 scanners/intelligence + 1 report
+    assert len(timeline["steps"]) == 10  # 9 scanners/intelligence + 1 report
     
     # Assert specific step outputs
     steps = {s["name"]: s for s in timeline["steps"]}
@@ -170,3 +170,4 @@ def test_full_scan_orchestrator_resilience_to_errors(
     assert steps["headers"]["status"] == "failed"
     assert steps["ssl"]["status"] == "completed"
     assert steps["report"]["status"] == "completed"
+

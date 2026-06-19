@@ -1,7 +1,5 @@
 """Define the scan profiles and execution step pipelines."""
-
 from __future__ import annotations
-
 from typing import Literal
 
 ProfileName = Literal["quick", "standard", "deep"]
@@ -23,6 +21,7 @@ PIPELINE_PROFILES: dict[str, list[str]] = {
         "cve_intelligence",
         "nuclei",
         "owasp",
+        "intelligence",
         "report",
     ],
     "deep": [
@@ -35,6 +34,7 @@ PIPELINE_PROFILES: dict[str, list[str]] = {
         "nuclei",
         "owasp",
         "payloads",
+        "intelligence",
         "report",
     ],
 }
@@ -42,7 +42,7 @@ PIPELINE_PROFILES: dict[str, list[str]] = {
 PIPELINE_DESCRIPTIONS: dict[str, str] = {
     "quick": "≈ 5 min — Headers, SSL, Nmap, Fingerprint",
     "standard": "≈ 15 min — Quick + Intelligence + Nuclei + OWASP",
-    "deep": "Completo — Standard + Payloads + PDF Report",
+    "deep": "Completo — Standard + Payloads + Intelligence + PDF Report",
 }
 
 ALIASES: dict[str, str] = {
@@ -51,7 +51,6 @@ ALIASES: dict[str, str] = {
 
 
 def get_pipeline_steps(profile: str) -> list[str]:
-    """Get the ordered list of step names for a given execution profile."""
     prof = profile.lower()
     prof = ALIASES.get(prof, prof)
     if prof not in PIPELINE_PROFILES:
@@ -62,5 +61,4 @@ def get_pipeline_steps(profile: str) -> list[str]:
 
 
 def get_profile_descriptions() -> dict[str, str]:
-    """Return the profile descriptions for display."""
     return dict(PIPELINE_DESCRIPTIONS)
