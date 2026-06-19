@@ -842,8 +842,352 @@ class HTMLReportRenderer:
         html_template += """
         </div>
 
+        <!-- INTELLIGENCE ANALYSIS -->
+        <h3 class="section-title">8. Attack Surface Intelligence</h3>
+        <div class="card" style="text-align: left;">
+"""
+
+        as_profile = collected_data["profiles"].get("attack_surface_profile") or {}
+        intel_report = collected_data["profiles"].get("intelligence_report") or {}
+        risk_matrix_data = collected_data["profiles"].get("risk_matrix") or {}
+        attack_paths_data = collected_data["profiles"].get("attack_paths") or []
+        waf_data = collected_data["profiles"].get("waf_profile") or {}
+        cdn_data = collected_data["profiles"].get("cdn_profile") or {}
+        hosting_data = collected_data["profiles"].get("hosting_profile") or {}
+        dns_data = collected_data["profiles"].get("dns_profile") or {}
+
+        # WAF Profile
+        waf_detected = waf_data.get("detected", as_profile.get("waf", {}).get("detected", False))
+        waf_vendor = waf_data.get("vendor", as_profile.get("waf", {}).get("vendor", "N/A"))
+        waf_confidence = waf_data.get("confidence", as_profile.get("waf", {}).get("confidence", 0))
+        waf_status = f"Detected: {waf_vendor} ({waf_confidence}% confidence)" if waf_detected else "Not Detected"
+        waf_color = "success" if waf_detected else "warning"
+
+        # CDN Profile
+        cdn_detected = cdn_data.get("detected", as_profile.get("cdn", {}).get("detected", False))
+        cdn_vendor = cdn_data.get("vendor", as_profile.get("cdn", {}).get("vendor", "N/A"))
+        cdn_confidence = cdn_data.get("confidence", as_profile.get("cdn", {}).get("confidence", 0))
+        cdn_status = f"Detected: {cdn_vendor} ({cdn_confidence}% confidence)" if cdn_detected else "Not Detected"
+        cdn_color = "success" if cdn_detected else "warning"
+
+        # Hosting Profile
+        hosting_detected = hosting_data.get("detected", as_profile.get("hosting", {}).get("detected", False))
+        hosting_provider = hosting_data.get("provider", as_profile.get("hosting", {}).get("provider", "N/A"))
+        hosting_confidence = hosting_data.get("confidence", as_profile.get("hosting", {}).get("confidence", 0))
+        hosting_status = f"Provider: {hosting_provider} ({hosting_confidence}% confidence)" if hosting_detected else "Not Identified"
+        hosting_color = "success" if hosting_detected else "warning"
+
+        # DNS Profile
+        dns_records = dns_data.get("records", as_profile.get("dns", {}).get("records", {}))
+        dns_findings = dns_data.get("findings", as_profile.get("dns", {}).get("findings", []))
+        dns_spf = "MISSING" if dns_data.get("spf_missing", as_profile.get("dns", {}).get("spf_missing", True)) else "OK"
+        dns_dmarc = "MISSING" if dns_data.get("dmarc_missing", as_profile.get("dns", {}).get("dmarc_missing", True)) else "OK"
+        dns_dkim = "MISSING" if dns_data.get("dkim_missing", as_profile.get("dns", {}).get("dkim_missing", True)) else "OK"
+        dns_records_count = sum(len(v) for v in dns_records.values()) if isinstance(dns_records, dict) else 0
+
+        html_template += f"""
+            <h4 style="color: var(--accent-color); margin-bottom: 15px;">WAF, CDN & Hosting Detection</h4>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>WAF</strong></td>
+                            <td><span class="mod-status mod-{waf_color}">{'✓' if waf_detected else '✗'} {waf_vendor if waf_detected else 'None'}</span></td>
+                            <td>{waf_status}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>CDN</strong></td>
+                            <td><span class="mod-status mod-{cdn_color}">{'✓' if cdn_detected else '✗'} {cdn_vendor if cdn_detected else 'None'}</span></td>
+                            <td>{cdn_status}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Hosting</strong></td>
+                            <td><span class="mod-status mod-{hosting_color}">{'✓' if hosting_detected else '✗'} {hosting_provider if hosting_detected else 'Unknown'}</span></td>
+                            <td>{hosting_status}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>DNS Records</strong></td>
+                            <td><span class="mod-status mod-{'success' if dns_records_count > 0 else 'warning'}">{dns_records_count} records</span></td>
+                            <td>SPF: {dns_spf} / DMARC: {dns_dmarc} / DKIM: {dns_dkim}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+"""
+
+        # Open Ports & Services
+        open_ports = as_profile.get("open_ports", [])
+        services_exposed = as_profile.get("services_exposed", [])
+        if open_ports:
+            ports_str = ", ".join(str(p) for p in open_ports[:15])
+            if len(open_ports) > 15:
+                ports_str += f" ... and {len(open_ports) - 15} more"
+            html_template += f"""
+            <h4 style="color: var(--accent-color); margin: 20px 0 15px;">Open Ports & Services</h4>
+            <p><strong>Ports:</strong> {ports_str}</p>
+            <p><strong>Services:</strong> {', '.join(services_exposed[:10]) if services_exposed else 'None identified'}</p>
+"""
+        else:
+            html_template += """
+            <p><strong>Open Ports:</strong> No open ports identified</p>
+"""
+
+        html_template += """
+        </div>
+
+        <!-- RISK MATRIX -->
+        <h3 class="section-title">9. Risk Matrix</h3>
+        <div class="card" style="text-align: left;">
+"""
+
+        if risk_matrix_data:
+            def _risk_color(level: str) -> str:
+                lvl = level.lower()
+                if lvl == "critical": return "sev-critical"
+                if lvl == "high": return "sev-high"
+                if lvl == "medium": return "sev-medium"
+                if lvl == "low": return "sev-low"
+                return "sev-info"
+
+            entries = ["likelihood", "impact", "exploitability", "exposure", "business_risk"]
+            html_template += """
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Dimension</th>
+                            <th>Score</th>
+                            <th>Level</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+"""
+            for entry_key in entries:
+                entry = risk_matrix_data.get(entry_key, {})
+                cat = entry.get("category", entry_key.capitalize())
+                score_val = entry.get("score", 0)
+                level_val = entry.get("level", "Unknown")
+                desc = entry.get("description", "")
+                html_template += f"""
+                        <tr>
+                            <td><strong>{cat}</strong></td>
+                            <td style="font-size: 1.2rem; font-weight: bold;">{score_val}/100</td>
+                            <td><span class="severity-badge {_risk_color(level_val)}">{level_val}</span></td>
+                            <td style="font-size: 0.85rem;">{desc}</td>
+                        </tr>
+"""
+            overall_level = risk_matrix_data.get("overall_level", "Unknown")
+            html_template += f"""
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 15px; text-align: center;">
+                <span class="severity-badge" style="font-size: 1rem; padding: 8px 20px; background-color: var(--{'crit' if overall_level.lower() == 'critical' else 'high' if overall_level.lower() == 'high' else 'med' if overall_level.lower() == 'medium' else 'low'}-color); color: #fff;">
+                    OVERALL RISK: {overall_level.upper()}
+                </span>
+            </div>
+"""
+        else:
+            html_template += """
+            <p>Risk Matrix data not available. Run <code>ghostmirror analyze attack-surface</code> to generate.</p>
+"""
+
+        as_score = intel_report.get("overall_attack_surface_score", as_profile.get("attack_surface_score", 0))
+        risk_score = intel_report.get("overall_risk_score", 0)
+        security_score = intel_report.get("overall_security_score", 0)
+
+        html_template += f"""
+        </div>
+
+        <!-- SCORE OVERVIEW -->
+        <h3 class="section-title">10. Score Overview</h3>
+        <div class="card" style="text-align: left;">
+            <div class="dashboard-grid" style="margin-bottom: 20px;">
+                <div class="card">
+                    <div class="score-circle" style="width: 120px; height: 120px; border-color: {'var(--high-color)' if as_score >= 61 else 'var(--med-color)' if as_score >= 41 else 'var(--low-color)'};">
+                        <span class="score-val" style="font-size: 2.5rem;">{as_score}</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Attack Surface</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="score-circle" style="width: 120px; height: 120px; border-color: {'var(--crit-color)' if risk_score >= 61 else 'var(--high-color)' if risk_score >= 41 else 'var(--med-color)'};">
+                        <span class="score-val" style="font-size: 2.5rem;">{risk_score}</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Risk Score</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="score-circle" style="width: 120px; height: 120px; border-color: {'var(--med-color)' if security_score < 50 else 'var(--success-color, #00c853)'};">
+                        <span class="score-val" style="font-size: 2.5rem;">{security_score}</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Security</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ATTACK PATHS -->
+        <h3 class="section-title">11. Attack Paths</h3>
+        <div class="card" style="text-align: left;">
+"""
+
+        if attack_paths_data:
+            for ap in attack_paths_data[:5]:
+                ap_title = ap.get("title", "Unknown Path")
+                ap_desc = ap.get("description", "")
+                ap_risk_score = ap.get("risk_score", 0)
+                ap_risk_level = ap.get("risk_level", "INFO")
+                ap_likelihood = ap.get("likelihood", "Unknown")
+                ap_impact = ap.get("impact", "Unknown")
+                ap_steps = ap.get("steps", [])
+                ap_mitigations = ap.get("mitigations", [])
+
+                path_color = "critical" if ap_risk_level.upper() == "CRITICAL" else "high" if ap_risk_level.upper() == "HIGH" else "medium" if ap_risk_level.upper() == "MEDIUM" else "info"
+
+                html_template += f"""
+            <div class="finding-card border-{path_color}" style="margin-bottom: 20px;">
+                <div class="finding-header">
+                    <span class="severity-badge sev-{path_color}">{ap_risk_level}</span>
+                    <span class="finding-title" style="font-size: 1.1rem;">{ap_title}</span>
+                </div>
+                <p style="color: var(--text-muted);">{ap_desc}</p>
+                <p><strong>Risk Score:</strong> {ap_risk_score}/100 &nbsp;|&nbsp; <strong>Likelihood:</strong> {ap_likelihood} &nbsp;|&nbsp; <strong>Impact:</strong> {ap_impact}</p>
+"""
+                if ap_steps:
+                    html_template += """
+                <div class="evidence-box">
+                    <div class="evidence-header">Attack Chain</div>
+                    <div style="padding: 15px;">
+"""
+                    for step in ap_steps:
+                        s_order = step.get("order", 0)
+                        s_label = step.get("label", "")
+                        s_detail = step.get("detail", "")
+                        arrow = "↓" if s_order < len(ap_steps) else ""
+                        html_template += f"""
+                        <div style="margin-bottom: 8px;">
+                            <strong>Step {s_order}:</strong> {s_label}
+                            <span style="color: var(--text-muted); font-size: 0.85rem;"> — {s_detail}</span>
+                        </div>
+"""
+                        if arrow:
+                            html_template += f"""                        <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin: 4px 0;">{arrow}</div>
+"""
+                    html_template += """
+                    </div>
+                </div>
+"""
+                if ap_mitigations:
+                    html_template += """
+                <div class="remediation-box">
+                    <strong>Mitigations</strong>
+                    <ul style="margin: 8px 0 0 20px;">
+"""
+                    for m in ap_mitigations:
+                        html_template += f"                        <li>{m}</li>\n"
+                    html_template += """
+                    </ul>
+                </div>
+"""
+                html_template += """
+            </div>
+"""
+        else:
+            html_template += """
+            <p>No attack paths modeled. Run <code>ghostmirror analyze attack-paths</code> to generate.</p>
+"""
+
+        # Executive Summary
+        exec_summary = collected_data["profiles"].get("executive_summary") or {}
+        summary_text = exec_summary.get("summary", intel_report.get("executive_summary", ""))
+
+        html_template += f"""
+        </div>
+
+        <!-- EXECUTIVE SUMMARY -->
+        <h3 class="section-title">12. Intelligence Executive Summary</h3>
+        <div class="card" style="text-align: left;">
+"""
+
+        if summary_text:
+            # Convert markdown-style formatting to HTML
+            html_summary = summary_text.replace("## Executive Summary", "")
+            html_summary = html_summary.replace("### ", "<h4 style='color: var(--accent-color); margin: 15px 0 10px;'>")
+            html_summary = html_summary.replace("**", "<strong>")
+            html_summary = html_summary.replace("\n\n", "</p><p>")
+            html_summary = html_summary.replace("\n", "<br>")
+            html_summary = f"<p>{html_summary}</p>"
+            html_summary = html_summary.replace("<p></p>", "")
+            html_summary += "</p>"
+            html_template += f"""
+            <div style="line-height: 1.6;">
+                {html_summary}
+            </div>
+"""
+        else:
+            html_template += """
+            <p>Executive Summary not available. Run <code>ghostmirror intelligence</code> to generate.</p>
+"""
+
+        # Recommendations from Intelligence
+        intel_recommendations = intel_report.get("recommendations", [])
+
+        html_template += """
+        </div>
+
+        <!-- PENTEST RECOMMENDATIONS -->
+        <h3 class="section-title">13. Pentest Recommendations</h3>
+        <div class="card" style="text-align: left;">
+"""
+
+        if intel_recommendations:
+            html_template += """
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Priority</th>
+                            <th>Assessment Type</th>
+                            <th>Justification</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+"""
+            for rec in intel_recommendations:
+                rec_type = rec.get("assessment_type", rec.get("type", "Assessment"))
+                rec_priority = rec.get("priority", "Medium")
+                rec_justification = rec.get("justification", "")
+                rec_refs = rec.get("findings_reference", [])
+                ref_str = ", ".join(rec_refs[:3]) if rec_refs else ""
+                p_color = "critical" if rec_priority.lower() == "critical" else "high" if rec_priority.lower() == "high" else "medium" if rec_priority.lower() == "medium" else "low"
+                html_template += f"""
+                        <tr>
+                            <td><span class="severity-badge sev-{p_color}">{rec_priority}</span></td>
+                            <td><strong>{rec_type}</strong></td>
+                            <td style="font-size: 0.85rem;">{rec_justification[:200]}{'...' if len(rec_justification) > 200 else ''}{'<br><em style=\"color: var(--text-muted);\">Refs: ' + ref_str + '</em>' if ref_str else ''}</td>
+                        </tr>
+"""
+            html_template += """
+                    </tbody>
+                </table>
+            </div>
+"""
+        else:
+            html_template += """
+            <p>Pentest recommendations not available. Run <code>ghostmirror intelligence</code> to generate.</p>
+"""
+
+        html_template += """
+        </div>
+
         <!-- RECOMENDAÇÕES E PRÓXIMOS PASSOS -->
-        <h3 class="section-title">8. Recomendações e Próximos Passos</h3>
+        <h3 class="section-title">14. Recomendações e Próximos Passos</h3>
         <div class="card" style="text-align: left;">
             <ul style="padding-left: 20px;">
                 <li style="margin-bottom: 12px;"><strong>Fase de Mitigação:</strong> Revise as configurações de servidores web e aplique patches de segurança para as tecnologias identificadas com CVEs ativas.</li>

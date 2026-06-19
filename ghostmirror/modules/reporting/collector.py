@@ -68,6 +68,30 @@ class ReportCollector:
                 "payload_profile": self._load_json_dict(
                     self.profiles_dir / "payload_profile.json"
                 ),
+                "intelligence_report": self._load_json_dict(
+                    self.profiles_dir / "intelligence_report.json"
+                ),
+                "risk_matrix": self._load_json_dict(
+                    self.profiles_dir / "risk_matrix.json"
+                ),
+                "attack_paths": self._load_json_list(
+                    self.profiles_dir / "attack_paths.json"
+                ),
+                "executive_summary": self._load_json_dict(
+                    self.profiles_dir / "executive_summary.json"
+                ),
+                "waf_profile": self._load_json_dict(
+                    self.profiles_dir / "waf_profile.json"
+                ),
+                "cdn_profile": self._load_json_dict(
+                    self.profiles_dir / "cdn_profile.json"
+                ),
+                "hosting_profile": self._load_json_dict(
+                    self.profiles_dir / "hosting_profile.json"
+                ),
+                "dns_profile": self._load_json_dict(
+                    self.profiles_dir / "dns_profile.json"
+                ),
             },
         }
 
@@ -134,6 +158,17 @@ class ReportCollector:
             logger.warning("Failed to load JSON {}: {}", path, exc)
             return None
 
+    def _load_json_list(self, path: Path) -> list[Any]:
+        if not path.exists():
+            return []
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, list) else []
+        except Exception as exc:
+            logger.warning("Failed to load JSON list {}: {}", path, exc)
+            return []
+
     def _load_finding_list(self, path: Path) -> list[FindingModel]:
         if not path.exists():
             return []
@@ -195,7 +230,17 @@ class ReportCollector:
                 seen_keys.add(key)
                 aggregated.append(finding)
 
-        # 6. Payload findings list
+        # 6. Intelligence findings list
+        intel_findings = self._load_finding_list(
+            self.findings_dir / "intelligence_findings.json"
+        )
+        for finding in intel_findings:
+            key = (finding.title, finding.description)
+            if key not in seen_keys:
+                seen_keys.add(key)
+                aggregated.append(finding)
+
+        # 7. Payload findings list
         for finding in findings_dict["payload_findings"]:
             key = (finding.title, finding.description)
             if key not in seen_keys:
@@ -203,3 +248,4 @@ class ReportCollector:
                 aggregated.append(finding)
 
         return aggregated
+

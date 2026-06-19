@@ -93,6 +93,7 @@ class ReportGenerator:
             risk_profile=data["profiles"]["risk_profile"],
             vulnerability_profile=data["profiles"]["vulnerability_profile"],
             owasp_profile=data["profiles"]["owasp_profile"],
+            intelligence_report=data["profiles"]["intelligence_report"],
         )
 
         # 4. Render formats
@@ -160,3 +161,4 @@ class ReportGenerator:
             "target": target,
             "generated_files": [str(p) for p in generated_files],
         }
+

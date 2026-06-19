@@ -11,7 +11,22 @@ from ghostmirror.models.settings import AppInfo, PathsConfig, SettingsModel
 from ghostmirror.models.technology import TechnologyModel
 from ghostmirror.models.fingerprint import AIProfile, FingerprintProfile
 from ghostmirror.models.technology_risk import TechnologyRisk
-from ghostmirror.models.attack_surface import AttackSurfaceProfile
+from ghostmirror.models.attack_surface import AttackSurfaceProfile as OldAttackSurfaceProfile
+from ghostmirror.models.attack_surface_profile import (
+    AttackSurfaceProfile,
+    WAFProfile,
+    CDNProfile,
+    HostingProfile,
+    DNSProfile,
+    DNSFinding,
+)
+from ghostmirror.models.attack_path import AttackPath, AttackPathStep
+from ghostmirror.models.intelligence_report import (
+    IntelligenceReport,
+    RiskMatrix,
+    RiskMatrixEntry,
+    PentestRecommendation,
+)
 from ghostmirror.models.risk_profile import RiskProfile
 from ghostmirror.models.cve import CVEModel
 from ghostmirror.models.cve_match import CVEMatchModel
@@ -42,6 +57,17 @@ __all__ = [
     "FingerprintProfile",
     "TechnologyRisk",
     "AttackSurfaceProfile",
+    "WAFProfile",
+    "CDNProfile",
+    "HostingProfile",
+    "DNSProfile",
+    "DNSFinding",
+    "AttackPath",
+    "AttackPathStep",
+    "IntelligenceReport",
+    "RiskMatrix",
+    "RiskMatrixEntry",
+    "PentestRecommendation",
     "RiskProfile",
     "CVEModel",
     "CVEMatchModel",
@@ -56,3 +82,4 @@ __all__ = [
     "SafetyLevel",
     "PayloadCategory",
 ]
+

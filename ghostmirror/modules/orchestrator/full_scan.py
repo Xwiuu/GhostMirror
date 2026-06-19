@@ -298,6 +298,13 @@ class FullScanOrchestrator:
             result = scanner.run()
             return len(result.findings)
 
+        elif step_name == "intelligence":
+            from ghostmirror.modules.intelligence.engine import IntelligenceEngine
+            engine = IntelligenceEngine()
+            report = engine.analyze_project(self.project_path)
+            findings_count = len(report.attack_paths) + len(report.recommendations)
+            return findings_count
+
         elif step_name == "payloads":
             from ghostmirror.modules.payloads.engine import PayloadEngine
             engine = PayloadEngine(
@@ -318,3 +325,4 @@ class FullScanOrchestrator:
         generator = ReportGenerator(self.project_path)
         for fmt in formats:
             generator.generate(fmt)
+
