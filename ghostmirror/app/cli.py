@@ -2770,7 +2770,7 @@ def cmd_analyze_web(
     target: str = typer.Option(None, "--target", "-t", help="URL alvo"),
 ) -> None:
     """Executa o Web Intelligence Engine."""
-    ctx.invoke(cmd_web_main, project=project, target=target)
+    ctx.invoke(cmd_web_main, ctx=ctx, project=project, target=target)
 
 
 def _resolve_project(app_ctx: AppContext, project: str | None) -> ProjectHandle:

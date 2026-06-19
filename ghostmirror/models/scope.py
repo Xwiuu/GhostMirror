@@ -52,7 +52,7 @@ class ScopeTargets(BaseModel):
             domain = raw.strip().lower()
             if not domain:
                 continue
-            if not _DOMAIN_RE.match(domain):
+            if not _DOMAIN_RE.match(domain) and domain not in _LAB_ALLOWED_HOSTS:
                 raise ValueError(f"Invalid domain in scope: {raw!r}")
             cleaned.append(domain)
         return cleaned
