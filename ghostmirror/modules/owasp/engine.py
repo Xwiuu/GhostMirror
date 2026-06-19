@@ -6,6 +6,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ghostmirror.app.url_normalizer import normalize_url
 from ghostmirror.core.logger import get_logger
 from ghostmirror.models.owasp_finding import OWASPCategory, OWASPFinding
 from ghostmirror.models.owasp_profile import OWASPProfile

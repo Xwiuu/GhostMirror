@@ -2,6 +2,25 @@
 
 from __future__ import annotations
 
+import enum
+
+
+class ExitCode(enum.IntEnum):
+    """Standardised exit codes for GhostMirror CLI.
+
+    0 = Success
+    1 = User Error (invalid input, project not found, etc.)
+    2 = Configuration Error
+    3 = Dependency Missing (tool not installed)
+    4 = Internal Error (unexpected exception)
+    """
+
+    SUCCESS = 0
+    USER_ERROR = 1
+    CONFIG_ERROR = 2
+    DEPENDENCY_MISSING = 3
+    INTERNAL_ERROR = 4
+
 
 class GhostMirrorError(Exception):
     """Base exception for all GhostMirror errors."""

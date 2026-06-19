@@ -14,6 +14,7 @@ from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
+from ghostmirror.app.url_normalizer import normalize_url
 from ghostmirror.core.logger import get_logger
 from ghostmirror.models.owasp_finding import OWASPCategory, OWASPFinding
 from ghostmirror.modules.models.finding import FindingSeverity
@@ -34,6 +35,11 @@ def _request(
     timeout: int = REQUEST_TIMEOUT,
 ) -> tuple[int, dict[str, str], str]:
     """Safe HTTP request returning (status_code, headers_dict, body)."""
+    try:
+        target = normalize_url(target)
+    except ValueError:
+        logger.warning("Invalid target URL for OWASP request: {}", target)
+        return 0, {}, ""
     url = target.rstrip("/") + path
     req = Request(url, method=method.upper())
     req.add_header("User-Agent", USER_AGENT)

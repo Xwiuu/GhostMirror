@@ -11,9 +11,12 @@ from rich.panel import Panel
 from rich.text import Text
 
 from ghostmirror.core.exceptions import (
+    InvalidConfigurationError,
     OutOfScopeError,
     ProjectError,
     ReportGenerationError,
+    ScannerError,
+    ToolError,
     ToolNotFoundError,
     ToolTimeoutError,
 )
@@ -47,8 +50,12 @@ def _find_tool_name(exc: BaseException) -> str | None:
     return None
 
 
-def handle_error(exc: BaseException, context: str = "") -> None:
-    """Display a user-friendly error message and log the full traceback."""
+def present_error(exc: BaseException, context: str = "") -> None:
+    """Display a user-friendly error message and log the full traceback.
+
+    NUNCA mostra traceback para o usuário. Sempre loga o traceback completo
+    em errors.log para diagnóstico.
+    """
     _log_traceback(exc)
 
     if isinstance(exc, ToolNotFoundError):
@@ -57,20 +64,20 @@ def handle_error(exc: BaseException, context: str = "") -> None:
             console.print(
                 Panel(
                     Text.from_markup(
-                        f"[red]❌ {tool_name.capitalize()} não encontrado[/]\n\n"
-                        f"[yellow]Instalação sugerida:[/]\n"
+                        f"[red]\u274c {tool_name.capitalize()} n\u00e3o encontrado[/]\n\n"
+                        f"[yellow]Instala\u00e7\u00e3o sugerida:[/]\n"
                         f"  [bold]{INSTALL_SUGGESTIONS[tool_name]}[/]\n\n"
                         f"[dim]Detalhes completos em: logs/errors.log[/]"
                     ),
                     border_style="red",
-                    title="Dependência Ausente",
+                    title="Depend\u00eancia Ausente",
                 )
             )
         else:
             console.print(
                 Panel(
                     Text.from_markup(
-                        f"[red]❌ Ferramenta não encontrada[/]\n\n"
+                        f"[red]\u274c Ferramenta n\u00e3o encontrada[/]\n\n"
                         f"[yellow]Mensagem:[/] {exc}\n\n"
                         f"[dim]Detalhes completos em: logs/errors.log[/]"
                     ),
@@ -83,7 +90,7 @@ def handle_error(exc: BaseException, context: str = "") -> None:
         console.print(
             Panel(
                 Text.from_markup(
-                    f"[red]❌ Alvo fora do escopo[/]\n\n"
+                    f"[red]\u274c Alvo fora do escopo[/]\n\n"
                     f"[yellow]{exc}[/]\n\n"
                     f"[dim]Verifique o arquivo scope.yaml do projeto.[/]"
                 ),
@@ -96,7 +103,7 @@ def handle_error(exc: BaseException, context: str = "") -> None:
         console.print(
             Panel(
                 Text.from_markup(
-                    f"[red]❌ Tempo limite excedido[/]\n\n"
+                    f"[red]\u274c Tempo limite excedido[/]\n\n"
                     f"[yellow]{exc}[/]\n\n"
                     f"[dim]Detalhes completos em: logs/errors.log[/]"
                 ),
@@ -105,11 +112,24 @@ def handle_error(exc: BaseException, context: str = "") -> None:
             )
         )
 
+    elif isinstance(exc, InvalidConfigurationError):
+        console.print(
+            Panel(
+                Text.from_markup(
+                    f"[red]\u274c Erro de configura\u00e7\u00e3o[/]\n\n"
+                    f"[yellow]{exc}[/]\n\n"
+                    f"[dim]Verifique seus arquivos de configura\u00e7\u00e3o.[/]"
+                ),
+                border_style="red",
+                title="Configura\u00e7\u00e3o",
+            )
+        )
+
     elif isinstance(exc, ProjectError):
         console.print(
             Panel(
                 Text.from_markup(
-                    f"[red]❌ Erro no projeto[/]\n\n"
+                    f"[red]\u274c Erro no projeto[/]\n\n"
                     f"[yellow]{exc}[/]"
                 ),
                 border_style="red",
@@ -121,27 +141,68 @@ def handle_error(exc: BaseException, context: str = "") -> None:
         console.print(
             Panel(
                 Text.from_markup(
-                    f"[red]❌ Erro ao gerar relatório[/]\n\n"
+                    f"[red]\u274c Erro ao gerar relat\u00f3rio[/]\n\n"
                     f"[yellow]{exc}[/]\n\n"
                     f"[dim]Detalhes completos em: logs/errors.log[/]"
                 ),
                 border_style="red",
-                title="Relatório",
+                title="Relat\u00f3rio",
             )
         )
 
-    elif isinstance(exc, KeyboardInterrupt):
-        console.print("\n[yellow]⚠ Operação cancelada pelo usuário.[/]")
+    elif isinstance(exc, ScannerError):
+        console.print(
+            Panel(
+                Text.from_markup(
+                    f"[red]\u274c Erro no scanner[/]\n\n"
+                    f"[yellow]{exc}[/]\n\n"
+                    f"[dim]Detalhes completos em: logs/errors.log[/]"
+                ),
+                border_style="red",
+                title="Scanner",
+            )
+        )
+
+    elif isinstance(exc, ToolError):
+        console.print(
+            Panel(
+                Text.from_markup(
+                    f"[red]\u274c Erro na ferramenta externa[/]\n\n"
+                    f"[yellow]{exc}[/]\n\n"
+                    f"[dim]Detalhes completos em: logs/errors.log[/]"
+                ),
+                border_style="red",
+                title="Ferramenta",
+            )
+        )
 
     elif isinstance(exc, FileNotFoundError):
         console.print(
             Panel(
                 Text.from_markup(
-                    f"[red]❌ Arquivo não encontrado[/]\n\n"
-                    f"[yellow]{exc}[/]"
+                    f"[red]\u274c Arquivo n\u00e3o encontrado[/]\n\n"
+                    f"[yellow]{exc}[/]\n\n"
+                    f"[dim]Verifique se o arquivo necess\u00e1rio existe.[/]"
                 ),
                 border_style="red",
                 title="Arquivo",
+            )
+        )
+
+    elif isinstance(exc, KeyboardInterrupt):
+        console.print("\n[yellow]\u26a0 Opera\u00e7\u00e3o cancelada pelo usu\u00e1rio.[/]")
+
+    elif isinstance(exc, ValueError):
+        msg = str(exc) if str(exc) else "Valor inv\u00e1lido"
+        console.print(
+            Panel(
+                Text.from_markup(
+                    f"[red]\u274c Valor inv\u00e1lido[/]\n\n"
+                    f"[yellow]{msg}[/]\n\n"
+                    f"[dim]Verifique os par\u00e2metros fornecidos.[/]"
+                ),
+                border_style="red",
+                title="Par\u00e2metro",
             )
         )
 
@@ -151,7 +212,7 @@ def handle_error(exc: BaseException, context: str = "") -> None:
         console.print(
             Panel(
                 Text.from_markup(
-                    f"[red]❌ Erro inesperado{ctx}[/]\n\n"
+                    f"[red]\u274c Erro inesperado{ctx}[/]\n\n"
                     f"[yellow]{msg}[/]\n\n"
                     f"[dim]Detalhes completos em: logs/errors.log[/]"
                 ),
@@ -159,3 +220,8 @@ def handle_error(exc: BaseException, context: str = "") -> None:
                 title="Erro",
             )
         )
+
+
+def handle_error(exc: BaseException, context: str = "") -> None:
+    """Legacy wrapper — delegates to present_error."""
+    present_error(exc, context)
