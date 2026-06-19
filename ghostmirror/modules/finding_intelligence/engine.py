@@ -52,7 +52,7 @@ class FindingIntelligenceEngine:
             except Exception as exc:
                 logger.warning("FINDING_INTELLIGENCE_SKIP error={} finding={}", exc, raw.get("title", "?"))
 
-        report = self._build_report(project_path.name, target, enriched)
+        report = self._build_report(project_path.name, target, enriched, total_raw=len(all_raw_findings))
         self._save_report(project_path, report)
         self._save_findings_list(project_path, enriched)
         self._save_top_findings(project_path, report.top_findings)
@@ -100,7 +100,7 @@ class FindingIntelligenceEngine:
         return ""
 
     def _build_report(
-        self, project_name: str, target: str, enriched: list[EnrichedFinding]
+        self, project_name: str, target: str, enriched: list[EnrichedFinding], total_raw: int = 0
     ) -> FindingIntelligenceReport:
         enriched.sort(key=self._sort_key, reverse=True)
 
@@ -139,7 +139,7 @@ class FindingIntelligenceEngine:
         report = FindingIntelligenceReport(
             project=project_name,
             target=target,
-            total_findings=len(enriched),
+            total_findings=total_raw or len(enriched),
             total_enriched=len(enriched),
             enriched_findings=enriched,
             priority_counts=priority_counts,

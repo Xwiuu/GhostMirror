@@ -38,6 +38,7 @@ class TestSeverityEngine:
         assert score_to_severity(45) == "MEDIUM"
         assert score_to_severity(25) == "LOW"
         assert score_to_severity(5) == "INFO"
+        assert score_to_severity(-5) == "INFO"  # covers negative score fallback
 
     def test_likelihood_labels(self) -> None:
         assert likelihood_label_from_score(90) == "Critical"
@@ -46,8 +47,11 @@ class TestSeverityEngine:
         assert likelihood_label_from_score(30) == "Low"
         assert likelihood_label_from_score(5) == "Very Low"
 
-    def test_exploitability_labels(self) -> None:
+    def test_exploitability_labels_all_levels(self) -> None:
         assert exploitability_label_from_score(90) == "Critical"
+        assert exploitability_label_from_score(70) == "High"
+        assert exploitability_label_from_score(50) == "Medium"
+        assert exploitability_label_from_score(30) == "Low"
         assert exploitability_label_from_score(10) == "Very Low"
 
     def test_invalid_severity(self) -> None:
@@ -88,6 +92,26 @@ class TestReferenceEngine:
         refs = get_references()
         assert len(refs) >= 3
         assert any("owasp" in r for r in refs)
+
+    def test_references_cve_title(self) -> None:
+        refs = get_references(title="CVE-2024-0001 detected")
+        assert len(refs) >= 3
+        assert any("cve" in r for r in refs)
+
+    def test_references_auth_category(self) -> None:
+        refs = get_references(category="Authentication Bypass")
+        assert len(refs) >= 3
+        assert any("owasp" in r for r in refs)
+
+    def test_references_category_ssl_tls(self) -> None:
+        refs = get_references(category="SSL/TLS")
+        assert len(refs) >= 3
+        assert any("owasp" in r for r in refs)
+
+    def test_references_category_partial_match(self) -> None:
+        refs = get_references(category="Open Port Scan")
+        assert len(refs) >= 3
+        assert any("cwe" in r for r in refs)
 
 
 class TestExecutiveMapper:
@@ -138,6 +162,30 @@ class TestFindingIntelligenceEngine:
         assert findings[0]["title"] == "Test"
         assert findings[0]["source"] == "headers"
 
+    def test_load_findings_json_list_format(self, tmp_path: Path) -> None:
+        findings_dir = tmp_path / "findings"
+        findings_dir.mkdir()
+        data = [{"title": "ListItem1", "severity": "LOW"}, {"title": "ListItem2", "severity": "MEDIUM"}]
+        fpath = findings_dir / "nuclei.json"
+        with open(fpath, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+
+        engine = FindingIntelligenceEngine()
+        findings = engine._load_all_findings(tmp_path)
+        assert len(findings) == 2
+        assert findings[0]["source"] == "nuclei"
+
+    def test_load_findings_corrupt_json(self, tmp_path: Path) -> None:
+        findings_dir = tmp_path / "findings"
+        findings_dir.mkdir()
+        fpath = findings_dir / "bad.json"
+        with open(fpath, "w", encoding="utf-8") as f:
+            f.write("not valid json")
+
+        engine = FindingIntelligenceEngine()
+        findings = engine._load_all_findings(tmp_path)
+        assert findings == []
+
     def test_resolve_target(self, tmp_path: Path) -> None:
         meta_path = tmp_path / "metadata.json"
         with open(meta_path, "w", encoding="utf-8") as f:
@@ -148,6 +196,15 @@ class TestFindingIntelligenceEngine:
         assert target == "example.com"
 
     def test_resolve_target_no_meta(self, tmp_path: Path) -> None:
+        engine = FindingIntelligenceEngine()
+        target = engine._resolve_target(tmp_path)
+        assert target == ""
+
+    def test_resolve_target_corrupt_meta(self, tmp_path: Path) -> None:
+        meta_path = tmp_path / "metadata.json"
+        with open(meta_path, "w", encoding="utf-8") as f:
+            f.write("{corrupt")
+
         engine = FindingIntelligenceEngine()
         target = engine._resolve_target(tmp_path)
         assert target == ""
@@ -167,6 +224,20 @@ class TestFindingIntelligenceEngine:
 
         ef2 = EnrichedFinding(title="Complex Issue", severity="HIGH", priority=FindingPriority.P2)
         assert not engine._is_quick_win(ef2)
+
+    def test_enrich_finding_raises_exception_skipped(self, tmp_path: Path) -> None:
+        findings_dir = tmp_path / "findings"
+        findings_dir.mkdir()
+        (tmp_path / "profiles").mkdir()
+        data = {"findings": [{"title": "", "severity": "LOW"}]}
+        fpath = findings_dir / "headers.json"
+        with open(fpath, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+
+        engine = FindingIntelligenceEngine()
+        report = engine.analyze_project(tmp_path)
+        assert report.total_findings == 1
+        assert report.total_enriched == 0
 
     def test_full_engine_analyze(self, tmp_path: Path) -> None:
         # Create project structure

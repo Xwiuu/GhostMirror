@@ -57,15 +57,5 @@ def get_references(category: str | None = None, title: str | None = None) -> lis
         for key, refs in REFERENCES_BY_CATEGORY.items():
             if key.lower() in title_lower or title_lower in key.lower():
                 return refs
-            for kw in ("ssl", "tls", "cipher", "certificate"):
-                if kw in title_lower and kw in key.lower():
-                    return REFERENCES_BY_CATEGORY.get("SSL/TLS", DEFAULT_REFERENCES)
-            for kw in ("cve", "cve-"):
-                if kw in title_lower and kw in key.lower():
-                    return REFERENCES_BY_CATEGORY.get("CVE", DEFAULT_REFERENCES)
-
-    for key in REFERENCES_BY_CATEGORY:
-        if key.lower() in (category or "").lower():
-            return REFERENCES_BY_CATEGORY[key]
 
     return DEFAULT_REFERENCES
