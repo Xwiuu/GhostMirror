@@ -22,6 +22,7 @@ PIPELINE_PROFILES: dict[str, list[str]] = {
         "nuclei",
         "owasp",
         "intelligence",
+        "web_intelligence",
         "report",
     ],
     "deep": [
@@ -35,14 +36,15 @@ PIPELINE_PROFILES: dict[str, list[str]] = {
         "owasp",
         "payloads",
         "intelligence",
+        "web_intelligence",
         "report",
     ],
 }
 
 PIPELINE_DESCRIPTIONS: dict[str, str] = {
     "quick": "≈ 5 min — Headers, SSL, Nmap, Fingerprint",
-    "standard": "≈ 15 min — Quick + Intelligence + Nuclei + OWASP",
-    "deep": "Completo — Standard + Payloads + Intelligence + PDF Report",
+    "standard": "≈ 15 min — Quick + Intelligence + Nuclei + OWASP + Web",
+    "deep": "Completo — Standard + Payloads + Intelligence + Web + PDF Report",
 }
 
 ALIASES: dict[str, str] = {

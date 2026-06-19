@@ -958,9 +958,67 @@ class HTMLReportRenderer:
 
         html_template += """
         </div>
+"""
 
+        # --- Web Intelligence ---
+        wi_report = collected_data.get("profiles", {}).get("web_intelligence_report")
+        wi_endpoints = collected_data.get("profiles", {}).get("web_endpoint_inventory") or []
+        wi_params = collected_data.get("profiles", {}).get("web_parameter_inventory") or []
+        wi_js = collected_data.get("profiles", {}).get("web_js_intelligence") or {}
+        wi_auth = collected_data.get("profiles", {}).get("web_auth_profile") or {}
+        wi_indicators = collected_data.get("profiles", {}).get("web_indicators") or []
+        wi_opportunities = collected_data.get("profiles", {}).get("web_opportunities") or []
+        wi_correlations = collected_data.get("profiles", {}).get("web_correlations") or []
+        wi_business = collected_data.get("profiles", {}).get("web_business_logic") or []
+
+        if wi_report:
+            html_template += '<div class="section">'
+            html_template += '<h2 class="section-title">🔍 7. Web Intelligence</h2>'
+            html_template += '<p>Passive web vulnerability analysis — endpoints, parameters, indicators and attack opportunities.</p>'
+
+            html_template += '<h3>Web Attack Surface</h3>'
+            html_template += '<table class="data-table"><tr><th>Metric</th><th>Value</th></tr>'
+            html_template += f'<tr><td>Total Endpoints</td><td>{wi_report.get("total_endpoints", 0)}</td></tr>'
+            html_template += f'<tr><td>Total Parameters</td><td>{wi_report.get("total_parameters", 0)}</td></tr>'
+            html_template += f'<tr><td>Total Indicators</td><td>{wi_report.get("total_indicators", 0)}</td></tr>'
+            html_template += f'<tr><td>Auth Endpoints</td><td>{wi_report.get("auth_profile", {}).get("total_auth_endpoints", 0)}</td></tr>'
+            html_template += f'<tr><td>API Endpoints</td><td>{wi_report.get("attack_surface", {}).get("api_endpoints", 0)}</td></tr>'
+            html_template += f'<tr><td>Forms</td><td>{wi_report.get("attack_surface", {}).get("forms_count", 0)}</td></tr>'
+            html_template += f'<tr><td>JS Scripts Analyzed</td><td>{wi_report.get("js_findings", {}).get("scripts_analyzed", 0)}</td></tr>'
+            html_template += f'<tr><td>Exposure</td><td>{wi_report.get("overall_score", 0)} — {wi_report.get("risk_level", "INFO")}</td></tr>'
+            html_template += '</table>'
+
+            if wi_opportunities:
+                html_template += '<h3>Opportunity Matrix</h3>'
+                html_template += '<table class="data-table"><tr><th>Score</th><th>Classification</th><th>Title</th></tr>'
+                for opp in wi_opportunities[:10]:
+                    cls = opp.get("classification", "LOW")
+                    html_template += f'<tr><td>{opp.get("score", 0)}/100</td><td><strong>{cls}</strong></td><td>{opp.get("title", "")}</td></tr>'
+                html_template += '</table>'
+
+            if wi_business:
+                html_template += '<h3>Business Logic Areas</h3>'
+                html_template += '<table class="data-table"><tr><th>Area</th><th>Risk</th><th>Endpoints</th></tr>'
+                for area in wi_business:
+                    html_template += f'<tr><td><strong>{area.get("area", "").title()}</strong></td><td>{area.get("risk", "info")}</td><td>{len(area.get("endpoints", []))}</td></tr>'
+                html_template += '</table>'
+
+            if wi_js and wi_js.get("secrets_found"):
+                html_template += '<h3>⚠ Secrets Found in JavaScript</h3><ul>'
+                for secret in wi_js["secrets_found"][:5]:
+                    html_template += f'<li><code>{secret[:80]}</code></li>'
+                html_template += '</ul>'
+
+            html_template += '</div>'
+        else:
+            html_template += '<div class="section">'
+            html_template += '<h2 class="section-title">🔍 7. Web Intelligence</h2>'
+            html_template += '<p><em>Web Intelligence not available. Run <code>ghostmirror web</code> to generate.</em></p>'
+            html_template += '</div>'
+
+        html_template += """
         <!-- SAFE PAYLOAD VALIDATION -->
-        <h3 class="section-title">7. Safe Payload Validation</h3>
+        <h3 class="section-title">8. Safe Payload Validation</h3>
         <div class="card">
         """
 
@@ -1053,7 +1111,7 @@ class HTMLReportRenderer:
         </div>
 
         <!-- INTELLIGENCE ANALYSIS -->
-        <h3 class="section-title">8. Attack Surface Intelligence</h3>
+        <h3 class="section-title">9. Attack Surface Intelligence</h3>
         <div class="card" style="text-align: left;">
 """
 
@@ -1153,7 +1211,7 @@ class HTMLReportRenderer:
         </div>
 
         <!-- RISK MATRIX -->
-        <h3 class="section-title">9. Risk Matrix</h3>
+        <h3 class="section-title">10. Risk Matrix</h3>
         <div class="card" style="text-align: left;">
 """
 
@@ -1218,7 +1276,7 @@ class HTMLReportRenderer:
         </div>
 
         <!-- SCORE OVERVIEW -->
-        <h3 class="section-title">10. Score Overview</h3>
+        <h3 class="section-title">11. Score Overview</h3>
         <div class="card" style="text-align: left;">
             <div class="dashboard-grid" style="margin-bottom: 20px;">
                 <div class="card">
@@ -1243,7 +1301,7 @@ class HTMLReportRenderer:
         </div>
 
         <!-- ATTACK PATHS -->
-        <h3 class="section-title">11. Attack Paths</h3>
+        <h3 class="section-title">12. Attack Paths</h3>
         <div class="card" style="text-align: left;">
 """
 
@@ -1321,7 +1379,7 @@ class HTMLReportRenderer:
         </div>
 
         <!-- EXECUTIVE SUMMARY -->
-        <h3 class="section-title">12. Intelligence Executive Summary</h3>
+        <h3 class="section-title">13. Intelligence Executive Summary</h3>
         <div class="card" style="text-align: left;">
 """
 
@@ -1352,7 +1410,7 @@ class HTMLReportRenderer:
         </div>
 
         <!-- PENTEST RECOMMENDATIONS -->
-        <h3 class="section-title">13. Pentest Recommendations</h3>
+        <h3 class="section-title">14. Pentest Recommendations</h3>
         <div class="card" style="text-align: left;">
 """
 
@@ -1397,7 +1455,7 @@ class HTMLReportRenderer:
         </div>
 
         <!-- RECOMENDAÇÕES E PRÓXIMOS PASSOS -->
-        <h3 class="section-title">14. Recomendações e Próximos Passos</h3>
+        <h3 class="section-title">15. Recomendações e Próximos Passos</h3>
         <div class="card" style="text-align: left;">
             <ul style="padding-left: 20px;">
                 <li style="margin-bottom: 12px;"><strong>Fase de Mitigação:</strong> Revise as configurações de servidores web e aplique patches de segurança para as tecnologias identificadas com CVEs ativas.</li>

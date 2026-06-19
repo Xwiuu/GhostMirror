@@ -122,6 +122,40 @@ class ReportCollector:
                 "quick_wins": self._load_json_list(
                     self.profiles_dir / "quick_wins.json"
                 ),
+                # Web Intelligence
+                "web_intelligence_report": self._load_json_dict(
+                    self.profiles_dir / "web_intelligence" / "web_intelligence_report.json"
+                ),
+                "web_endpoint_inventory": self._load_json_list(
+                    self.profiles_dir / "web_intelligence" / "endpoint_inventory.json"
+                ),
+                "web_parameter_inventory": self._load_json_list(
+                    self.profiles_dir / "web_intelligence" / "parameter_inventory.json"
+                ),
+                "web_js_intelligence": self._load_json_dict(
+                    self.profiles_dir / "web_intelligence" / "js_intelligence.json"
+                ),
+                "web_auth_profile": self._load_json_dict(
+                    self.profiles_dir / "web_intelligence" / "auth_profile.json"
+                ),
+                "web_indicators": self._load_json_list(
+                    self.profiles_dir / "web_intelligence" / "web_indicators.json"
+                ),
+                "web_correlations": self._load_json_list(
+                    self.profiles_dir / "web_intelligence" / "correlation_results.json"
+                ),
+                "web_opportunities": self._load_json_list(
+                    self.profiles_dir / "web_intelligence" / "opportunity_scores.json"
+                ),
+                "web_business_logic": self._load_json_list(
+                    self.profiles_dir / "web_intelligence" / "business_logic.json"
+                ),
+                "web_recommendations": self._load_json_list(
+                    self.profiles_dir / "web_intelligence" / "web_recommendations.json"
+                ),
+                "web_attack_surface": self._load_json_dict(
+                    self.profiles_dir / "web_intelligence" / "attack_surface.json"
+                ),
             },
         }
 

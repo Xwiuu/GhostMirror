@@ -47,6 +47,18 @@ from ghostmirror.models.finding_impact import BusinessImpact, TechnicalImpact
 from ghostmirror.models.enriched_finding import EnrichedFinding
 from ghostmirror.models.finding_intelligence_report import FindingIntelligenceReport
 
+# Web Intelligence models
+from ghostmirror.models.web_endpoint import WebEndpoint, HttpMethod, WebForm
+from ghostmirror.models.parameter_profile import ParameterProfile, ParameterType, ParameterSensitivity
+from ghostmirror.models.web_indicator import WebIndicator, IndicatorType, SeverityLevel
+from ghostmirror.models.web_intelligence_report import (
+    WebIntelligenceReport,
+    CorrelationResult,
+    OpportunityScore,
+    BusinessLogicArea,
+)
+from ghostmirror.models.web_attack_surface import WebAttackSurface, IndicatorSummary
+
 __all__ = [
     "ProjectModel",
     "ProjectStatus",
@@ -92,5 +104,21 @@ __all__ = [
     "TechnicalImpact",
     "EnrichedFinding",
     "FindingIntelligenceReport",
+    # Web Intelligence
+    "WebEndpoint",
+    "HttpMethod",
+    "WebForm",
+    "ParameterProfile",
+    "ParameterType",
+    "ParameterSensitivity",
+    "WebIndicator",
+    "IndicatorType",
+    "SeverityLevel",
+    "WebIntelligenceReport",
+    "CorrelationResult",
+    "OpportunityScore",
+    "BusinessLogicArea",
+    "WebAttackSurface",
+    "IndicatorSummary",
 ]
 

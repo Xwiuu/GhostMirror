@@ -19,6 +19,7 @@ STEP_DEPENDENCIES: dict[str, list[str]] = {
     "technology_intelligence": ["fingerprint"],
     "cve_intelligence": ["fingerprint"],
     "nuclei": ["cve_intelligence", "technology_intelligence"],
+    "web_intelligence": ["fingerprint"],
 }
 
 
@@ -303,6 +304,13 @@ class FullScanOrchestrator:
             engine = IntelligenceEngine()
             report = engine.analyze_project(self.project_path)
             findings_count = len(report.attack_paths) + len(report.recommendations)
+            return findings_count
+
+        elif step_name == "web_intelligence":
+            from ghostmirror.modules.web_intelligence.engine import WebIntelligenceEngine
+            engine = WebIntelligenceEngine()
+            report = engine.analyze_project(self.project_path)
+            findings_count = len(report.indicators) + len(report.opportunities)
             return findings_count
 
         elif step_name == "payloads":

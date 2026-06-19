@@ -411,7 +411,90 @@ A plataforma de inteligência avançada de vulnerabilidades correlacionou CVEs, 
 ---\n
 """
 
-        # 8. Safe Payload Validation
+        # 8. Web Intelligence
+        wi_report = collected_data["profiles"].get("web_intelligence_report") or {}
+        wi_endpoints = collected_data["profiles"].get("web_endpoint_inventory") or []
+        wi_params = collected_data["profiles"].get("web_parameter_inventory") or []
+        wi_js = collected_data["profiles"].get("web_js_intelligence") or {}
+        wi_auth = collected_data["profiles"].get("web_auth_profile") or {}
+        wi_indicators = collected_data["profiles"].get("web_indicators") or []
+        wi_opportunities = collected_data["profiles"].get("web_opportunities") or []
+        wi_correlations = collected_data["profiles"].get("web_correlations") or []
+        wi_business = collected_data["profiles"].get("web_business_logic") or []
+
+        if wi_report:
+            md += """
+---
+
+## 8. WEB INTELLIGENCE
+
+A Web Intelligence Engine realizou uma análise passiva de vulnerabilidades web no alvo, identificando endpoints, parâmetros, indicadores e oportunidades de ataque.
+
+### Web Attack Surface Overview
+
+| Métrica | Valor |
+| :--- | :--- |
+"""
+            md += f"| **Total Endpoints** | {wi_report.get('total_endpoints', 0)} |\n"
+            md += f"| **Total Parameters** | {wi_report.get('total_parameters', 0)} |\n"
+            md += f"| **Total Indicators** | {wi_report.get('total_indicators', 0)} |\n"
+            md += f"| **Auth Endpoints** | {wi_report.get('auth_profile', {}).get('total_auth_endpoints', 0)} |\n"
+            md += f"| **API Endpoints** | {wi_report.get('attack_surface', {}).get('api_endpoints', 0)} |\n"
+            md += f"| **Forms** | {wi_report.get('attack_surface', {}).get('forms_count', 0)} |\n"
+            md += f"| **JS Scripts Analyzed** | {wi_report.get('js_findings', {}).get('scripts_analyzed', 0)} |\n"
+            md += f"| **Exposure** | {wi_report.get('overall_score', 0)} — {wi_report.get('risk_level', 'INFO')} |\n\n"
+
+            if wi_auth and wi_auth.get('total_auth_endpoints', 0) > 0:
+                md += "### Auth Intelligence\n\n| Feature | Status |\n| :--- | :--- |\n"
+                md += f"| Login | {'✓' if wi_auth.get('has_login') else '✗'} ({len(wi_auth.get('login_endpoints', []))}) |\n"
+                md += f"| Register | {'✓' if wi_auth.get('has_register') else '✗'} ({len(wi_auth.get('register_endpoints', []))}) |\n"
+                md += f"| Reset Password | {'✓' if wi_auth.get('has_reset_password') else '✗'} |\n"
+                md += f"| Admin | {'✓' if wi_auth.get('has_admin') else '✗'} ({len(wi_auth.get('admin_endpoints', []))}) |\n"
+                md += f"| MFA | {'✓' if wi_auth.get('has_mfa') else '✗'} |\n\n"
+
+            if wi_indicators:
+                md += "### Vulnerability Indicators\n\n| Type | Count |\n| :--- | :--- |\n"
+                ind_count: dict[str, int] = {}
+                for ind in wi_indicators:
+                    itype = ind.get('indicator_type', 'unknown')
+                    ind_count[itype] = ind_count.get(itype, 0) + 1
+                for itype, count in sorted(ind_count.items(), key=lambda x: -x[1]):
+                    md += f"| {itype.replace('_', ' ').title()} | {count} |\n"
+                md += "\n"
+
+            if wi_opportunities:
+                md += "### Opportunity Matrix\n\n| Score | Classification | Title |\n| :--- | :--- | :--- |\n"
+                for opp in wi_opportunities[:10]:
+                    score = opp.get('score', 0)
+                    cls = opp.get('classification', 'LOW')
+                    md += f"| {score}/100 | **{cls}** | {opp.get('title', '')} |\n"
+                md += "\n"
+
+            if wi_business:
+                md += "### Business Logic Areas\n\n| Area | Risk | Endpoints |\n| :--- | :--- | :--- |\n"
+                for area in wi_business:
+                    md += f"| **{area.get('area', '').title()}** | {area.get('risk', 'info')} | {len(area.get('endpoints', []))} |\n"
+                md += "\n"
+
+            if wi_js and wi_js.get('secrets_found'):
+                md += "### JS Intelligence — ⚠ Secrets Found!\n\n"
+                for secret in wi_js['secrets_found'][:5]:
+                    md += f"- `{secret[:80]}`\n"
+                md += "\n"
+
+            md += "---\n"
+        else:
+            md += """
+---
+
+## 8. WEB INTELLIGENCE
+
+*Dados de Web Intelligence não disponíveis. Execute `ghostmirror web` ou `ghostmirror analyze web` para gerar.*
+
+---\n
+"""
+
+        # 9. Safe Payload Validation
         payload_profile = collected_data["profiles"].get("payload_profile") or {}
         payload_findings = all_findings_data.get("payload_findings") or []
 
@@ -425,7 +508,7 @@ A plataforma de inteligência avançada de vulnerabilidades correlacionou CVEs, 
             pp_dry_run = payload_profile.get("dry_run", False)
 
             md += f"""
-## 7. SAFE PAYLOAD VALIDATION
+## 9. SAFE PAYLOAD VALIDATION
 
 A validação de payloads seguros registrou **{pp_total}** payloads, dos quais **{pp_executed}** foram executados e **{pp_blocked}** bloqueados.
 
@@ -448,14 +531,14 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
             md += "\n---\n"
         else:
             md += """
-## 7. SAFE PAYLOAD VALIDATION
+## 9. SAFE PAYLOAD VALIDATION
 
 *Dados do Safe Payload Validation não disponíveis. Execute `ghostmirror scan payloads` para gerar.*
 
 ---\n
 """
 
-        # 9. Attack Surface Intelligence
+        # 10. Attack Surface Intelligence
         as_profile = collected_data["profiles"].get("attack_surface_profile") or {}
         intel_report = collected_data["profiles"].get("intelligence_report") or {}
         risk_matrix_data = collected_data["profiles"].get("risk_matrix") or {}
@@ -476,7 +559,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
         dns_dkim = "MISSING" if dns.get("dkim_missing", True) else "OK"
 
         md += f"""
-## 9. ATTACK SURFACE INTELLIGENCE
+## 10. ATTACK SURFACE INTELLIGENCE
 
 ### WAF, CDN & Hosting Detection
 
@@ -493,7 +576,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
 
 ---
 
-## 10. RISK MATRIX
+## 11. RISK MATRIX
 
 """
 
@@ -530,7 +613,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
 
 ---
 
-## 11. ATTACK PATHS
+## 12. ATTACK PATHS
 
 """
 
@@ -569,12 +652,12 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
         else:
             md += "*No attack paths modeled. Run `ghostmirror analyze attack-paths` to generate.*\n\n"
 
-        # 12. Executive Summary
+        # 13. Executive Summary
         exec_summary_data = collected_data["profiles"].get("executive_summary") or {}
         summary_text = exec_summary_data.get("summary", intel_report.get("executive_summary", ""))
 
         md += """
-## 12. INTELLIGENCE EXECUTIVE SUMMARY
+## 13. INTELLIGENCE EXECUTIVE SUMMARY
 
 """
         if summary_text:
@@ -584,10 +667,10 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
 
         md += "---\n\n"
 
-        # 13. Pentest Recommendations
+        # 14. Pentest Recommendations
         intel_recommendations = intel_report.get("recommendations", [])
         md += """
-## 13. PENTEST RECOMMENDATIONS
+## 14. PENTEST RECOMMENDATIONS
 
 """
 
@@ -606,9 +689,9 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
         else:
             md += "*Pentest recommendations not available. Run `ghostmirror intelligence` to generate.*\n\n"
 
-        # 14. Next steps
+        # 15. Next steps
         md += """
-## 14. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
+## 15. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
 
 1. **Fase de Mitigação:** Priorize a aplicação de patches e atualizações nas tecnologias que apresentarem CVEs de criticidade Crítica ou Alta.
 2. **Hardening de Rede:** Restrinja o acesso a portas administrativas expostas utilizando regras de firewall estritas.

@@ -2516,6 +2516,283 @@ def cmd_nuclei_update(ctx: typer.Context) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# Web Intelligence sub-app
+# --------------------------------------------------------------------------- #
+web_app = typer.Typer(help="Web Vulnerability Intelligence Engine.")
+app.add_typer(web_app, name="web")
+
+
+@web_app.callback(invoke_without_command=True)
+def cmd_web_main(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+    target: str = typer.Option(None, "--target", "-t", help="URL alvo para análise web"),
+) -> None:
+    """Executa o Web Intelligence Engine completo no projeto."""
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado. Por favor, crie um projeto primeiro.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.web_intelligence.engine import WebIntelligenceEngine
+
+    engine = WebIntelligenceEngine()
+    try:
+        with console.status("[bold green]Executando Web Intelligence Engine...[/]"):
+            report = engine.analyze_project(handle.path, target_url=target)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante Web Intelligence:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("WEB INTELLIGENCE COMPLETE\n")
+    console.print(f"Target: {report.target}")
+    console.print(f"\nEndpoints: [bold]{report.total_endpoints}[/]")
+    console.print(f"Parameters: [bold]{report.total_parameters}[/]")
+    console.print(f"Indicators: [bold]{report.total_indicators}[/]")
+    console.print(f"Opportunities: [bold]{report.total_opportunities}[/]")
+    console.print(f"\nExposure: [bold]{report.overall_score}[/] — {report.risk_level}")
+
+    if report.auth_profile:
+        ap = report.auth_profile
+        console.print("\nAuth Endpoints:")
+        console.print(f"  Login: {len(ap.get('login_endpoints', []))}")
+        console.print(f"  Register: {len(ap.get('register_endpoints', []))}")
+        console.print(f"  Admin: {len(ap.get('admin_endpoints', []))}")
+        console.print(f"  MFA: {len(ap.get('mfa_endpoints', []))}")
+
+    if report.opportunities:
+        console.print(f"\nTop 3 Opportunities:")
+        for o in report.opportunities[:3]:
+            color = "red" if o.classification == "CRITICAL" else "orange1" if o.classification == "HIGH" else "yellow"
+            console.print(f"  [{color}]{o.classification}[/] {o.title} — Score: {o.score}/100")
+
+    console.print("\nSaved Profiles:")
+    console.print("  profiles/web_intelligence/")
+    console.print("---")
+
+
+@web_app.command("endpoints", help="Exibe o inventário de endpoints descobertos.")
+def cmd_web_endpoints(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Exibe o inventário de endpoints web descobertos."""
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    import json
+    path = handle.path / "profiles" / "web_intelligence" / "endpoint_inventory.json"
+    if not path.exists():
+        console.print("[yellow]Execute 'ghostmirror web' primeiro.[/]")
+        raise typer.Exit(code=1)
+    with open(path, "r", encoding="utf-8") as f:
+        endpoints = json.load(f)
+
+    table = Table(box=box.ROUNDED, header_style="bold cyan", title="Endpoint Inventory")
+    table.add_column("URL", style="green")
+    table.add_column("Status")
+    table.add_column("Params")
+    table.add_column("Forms")
+    table.add_column("Type")
+    for ep in endpoints[:50]:
+        ep_type = "API" if ep.get("is_api") else "Auth" if ep.get("is_auth") else "Admin" if ep.get("is_admin") else "Static" if ep.get("is_static") else "Page"
+        table.add_row(
+            ep.get("url", "")[:80],
+            str(ep.get("status_code", 0)),
+            str(len(ep.get("params", []))),
+            str(len(ep.get("forms", []))),
+            ep_type,
+        )
+    console.print(table)
+    console.print(f"\nTotal: {len(endpoints)} endpoints")
+
+
+@web_app.command("parameters", help="Exibe o inventário de parâmetros descobertos.")
+def cmd_web_parameters(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Exibe o inventário de parâmetros web descobertos."""
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    import json
+    path = handle.path / "profiles" / "web_intelligence" / "parameter_inventory.json"
+    if not path.exists():
+        console.print("[yellow]Execute 'ghostmirror web' primeiro.[/]")
+        raise typer.Exit(code=1)
+    with open(path, "r", encoding="utf-8") as f:
+        params = json.load(f)
+
+    table = Table(box=box.ROUNDED, header_style="bold cyan", title="Parameter Inventory")
+    table.add_column("Parameter", style="green")
+    table.add_column("Type")
+    table.add_column("Sensitivity")
+    table.add_column("Locations")
+    for p in params:
+        sens = p.get("sensitivity", "none")
+        color = "red" if sens in ("critical", "high") else "yellow" if sens == "medium" else "cyan"
+        table.add_row(
+            p.get("name", ""),
+            p.get("param_type", "query"),
+            f"[{color}]{sens}[/]",
+            str(len(p.get("locations", []))),
+        )
+    console.print(table)
+    console.print(f"\nTotal: {len(params)} parameters")
+
+
+@web_app.command("auth", help="Exibe o perfil de autenticação descoberto.")
+def cmd_web_auth(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Exibe o perfil de autenticação."""
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    import json
+    path = handle.path / "profiles" / "web_intelligence" / "auth_profile.json"
+    if not path.exists():
+        console.print("[yellow]Execute 'ghostmirror web' primeiro.[/]")
+        raise typer.Exit(code=1)
+    with open(path, "r", encoding="utf-8") as f:
+        auth = json.load(f)
+
+    console.print(f"\n[bold cyan]Auth Profile[/]\n")
+    console.print(f"Login: [green]{'Yes' if auth.get('has_login') else 'No'}[/] ({len(auth.get('login_endpoints', []))})")
+    console.print(f"Register: [green]{'Yes' if auth.get('has_register') else 'No'}[/] ({len(auth.get('register_endpoints', []))})")
+    console.print(f"Reset Password: [green]{'Yes' if auth.get('has_reset_password') else 'No'}[/] ({len(auth.get('reset_password_endpoints', []))})")
+    console.print(f"Admin: [green]{'Yes' if auth.get('has_admin') else 'No'}[/] ({len(auth.get('admin_endpoints', []))})")
+    console.print(f"MFA: [green]{'Yes' if auth.get('has_mfa') else 'No'}[/] ({len(auth.get('mfa_endpoints', []))})")
+    console.print(f"\nTotal Auth Endpoints: {auth.get('total_auth_endpoints', 0)}")
+
+    if auth.get("admin_endpoints"):
+        console.print("\n[bold orange1]Admin Endpoints:[/]")
+        for url in auth["admin_endpoints"]:
+            console.print(f"  - {url}")
+
+
+@web_app.command("js", help="Exibe a inteligência coletada de arquivos JavaScript.")
+def cmd_web_js(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Exibe a inteligência de JavaScript."""
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    import json
+    path = handle.path / "profiles" / "web_intelligence" / "js_intelligence.json"
+    if not path.exists():
+        console.print("[yellow]Execute 'ghostmirror web' primeiro.[/]")
+        raise typer.Exit(code=1)
+    with open(path, "r", encoding="utf-8") as f:
+        js = json.load(f)
+
+    console.print(f"\n[bold cyan]JS Intelligence[/]\n")
+    console.print(f"Scripts Analyzed: {js.get('scripts_analyzed', 0)}")
+    console.print(f"Endpoints Found: {len(js.get('endpoints_discovered', []))}")
+    console.print(f"Secrets Found: {len(js.get('secrets_found', []))}")
+    console.print(f"Internal URLs: {len(js.get('internal_urls', []))}")
+    console.print(f"Interesting Comments: {len(js.get('interesting_comments', []))}")
+    console.print(f"Internal Routes: {len(js.get('internal_routes', []))}")
+
+    if js.get("secrets_found"):
+        console.print("\n[bold red]⚠ Potential Secrets Found![/]")
+        for secret in js["secrets_found"][:10]:
+            console.print(f"  - {secret[:80]}")
+
+    if js.get("internal_urls"):
+        console.print("\n[bold orange1]Internal URLs Found:[/]")
+        for url in js["internal_urls"][:10]:
+            console.print(f"  - {url}")
+
+
+@web_app.command("opportunities", help="Exibe a matriz de oportunidades de ataque.")
+def cmd_web_opportunities(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Exibe a matriz de oportunidades de ataque."""
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    import json
+    path = handle.path / "profiles" / "web_intelligence" / "opportunity_scores.json"
+    if not path.exists():
+        console.print("[yellow]Execute 'ghostmirror web' primeiro.[/]")
+        raise typer.Exit(code=1)
+    with open(path, "r", encoding="utf-8") as f:
+        opportunities = json.load(f)
+
+    console.print(f"\n[bold cyan]Opportunity Matrix[/]\n")
+    if not opportunities:
+        console.print("[yellow]No opportunities identified.[/]")
+        return
+
+    table = Table(box=box.ROUNDED, header_style="bold cyan", title="Attack Opportunities")
+    table.add_column("Score", justify="right")
+    table.add_column("Classification")
+    table.add_column("Title")
+    table.add_column("Endpoint")
+    for opp in opportunities:
+        score = opp.get("score", 0)
+        color = "red" if score >= 76 else "orange1" if score >= 51 else "yellow" if score >= 26 else "cyan"
+        table.add_row(
+            f"[{color}]{score}[/]",
+            f"[{color}]{opp.get('classification', 'LOW')}[/]",
+            opp.get("title", "")[:50],
+            opp.get("endpoint", "")[:60],
+        )
+    console.print(table)
+
+    critical = [o for o in opportunities if o.get("classification") == "CRITICAL"]
+    high = [o for o in opportunities if o.get("classification") == "HIGH"]
+    console.print(f"\nCritical: {len(critical)} | High: {len(high)} | Total: {len(opportunities)}")
+
+
+# Also add as analyze sub-command
+@analyze_app.command("web", help="Web Intelligence Engine - análise passiva de vulnerabilidades web.")
+def cmd_analyze_web(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+    target: str = typer.Option(None, "--target", "-t", help="URL alvo"),
+) -> None:
+    """Executa o Web Intelligence Engine."""
+    ctx.invoke(cmd_web_main, project=project, target=target)
+
+
+def _resolve_project(app_ctx: AppContext, project: str | None) -> ProjectHandle:
+    """Helper to resolve a project slug or prompt the user."""
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+    try:
+        return app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
+# --------------------------------------------------------------------------- #
 # Lab Mode sub-app
 # --------------------------------------------------------------------------- #
 lab_app = typer.Typer(help="Lab Mode: ambientes vulneráveis controlados.")
