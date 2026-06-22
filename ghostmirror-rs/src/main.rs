@@ -38,32 +38,30 @@ enum Commands {
 fn main() {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Portscan { host, ports, timeout } => {
-            match port_scanner::scan(&host, &ports, timeout) {
-                Ok(result) => output::print_json(&result),
-                Err(e) => {
-                    eprintln!("{{\"error\":\"{}\"}}", e);
-                    std::process::exit(1);
-                }
+        Commands::Portscan {
+            host,
+            ports,
+            timeout,
+        } => match port_scanner::scan(&host, &ports, timeout) {
+            Ok(result) => output::print_json(&result),
+            Err(e) => {
+                eprintln!("{{\"error\":\"{}\"}}", e);
+                std::process::exit(1);
             }
-        }
-        Commands::Banner { host, port, tls } => {
-            match banner_grabber::grab(&host, port, tls) {
-                Ok(result) => output::print_json(&result),
-                Err(e) => {
-                    eprintln!("{{\"error\":\"{}\"}}", e);
-                    std::process::exit(1);
-                }
+        },
+        Commands::Banner { host, port, tls } => match banner_grabber::grab(&host, port, tls) {
+            Ok(result) => output::print_json(&result),
+            Err(e) => {
+                eprintln!("{{\"error\":\"{}\"}}", e);
+                std::process::exit(1);
             }
-        }
-        Commands::Fingerprint { url } => {
-            match http_fingerprint::fingerprint(&url) {
-                Ok(result) => output::print_json(&result),
-                Err(e) => {
-                    eprintln!("{{\"error\":\"{}\"}}", e);
-                    std::process::exit(1);
-                }
+        },
+        Commands::Fingerprint { url } => match http_fingerprint::fingerprint(&url) {
+            Ok(result) => output::print_json(&result),
+            Err(e) => {
+                eprintln!("{{\"error\":\"{}\"}}", e);
+                std::process::exit(1);
             }
-        }
+        },
     }
 }

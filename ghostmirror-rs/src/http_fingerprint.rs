@@ -19,9 +19,9 @@ struct ResponseInfo {
 fn has_header(headers: &[(String, String)], name: &str, value_contains: &str) -> bool {
     let lower_name = name.to_lowercase();
     let lower_value = value_contains.to_lowercase();
-    headers.iter().any(|(k, v)| {
-        k.to_lowercase() == lower_name && v.to_lowercase().contains(&lower_value)
-    })
+    headers
+        .iter()
+        .any(|(k, v)| k.to_lowercase() == lower_name && v.to_lowercase().contains(&lower_value))
 }
 
 fn header_value<'a>(headers: &'a [(String, String)], name: &str) -> Option<&'a str> {
@@ -138,28 +138,87 @@ fn detect_apache(info: &ResponseInfo) -> bool {
 
 fn detect_iis(info: &ResponseInfo) -> bool {
     if let Some(val) = header_value(&info.headers, "server") {
-        return val.to_lowercase().contains("iis")
-            || val.to_lowercase().contains("microsoft-iis");
+        return val.to_lowercase().contains("iis") || val.to_lowercase().contains("microsoft-iis");
     }
     false
 }
 
 static DETECTORS: &[TechDetector] = &[
-    TechDetector { name: "WordPress", category: "cms", check: detect_wordpress },
-    TechDetector { name: "Drupal", category: "cms", check: detect_drupal },
-    TechDetector { name: "Joomla", category: "cms", check: detect_joomla },
-    TechDetector { name: "Laravel", category: "framework", check: detect_laravel },
-    TechDetector { name: "Django", category: "framework", check: detect_django },
-    TechDetector { name: "Flask", category: "framework", check: detect_flask },
-    TechDetector { name: "Express", category: "framework", check: detect_express },
-    TechDetector { name: "Next.js", category: "framework", check: detect_nextjs },
-    TechDetector { name: "React", category: "frontend", check: detect_react },
-    TechDetector { name: "Vue.js", category: "frontend", check: detect_vue },
-    TechDetector { name: "Angular", category: "frontend", check: detect_angular },
-    TechDetector { name: "Nginx", category: "webserver", check: detect_nginx },
-    TechDetector { name: "Apache", category: "webserver", check: detect_apache },
-    TechDetector { name: "IIS", category: "webserver", check: detect_iis },
-    TechDetector { name: "Cloudflare", category: "cdn", check: detect_cloudflare },
+    TechDetector {
+        name: "WordPress",
+        category: "cms",
+        check: detect_wordpress,
+    },
+    TechDetector {
+        name: "Drupal",
+        category: "cms",
+        check: detect_drupal,
+    },
+    TechDetector {
+        name: "Joomla",
+        category: "cms",
+        check: detect_joomla,
+    },
+    TechDetector {
+        name: "Laravel",
+        category: "framework",
+        check: detect_laravel,
+    },
+    TechDetector {
+        name: "Django",
+        category: "framework",
+        check: detect_django,
+    },
+    TechDetector {
+        name: "Flask",
+        category: "framework",
+        check: detect_flask,
+    },
+    TechDetector {
+        name: "Express",
+        category: "framework",
+        check: detect_express,
+    },
+    TechDetector {
+        name: "Next.js",
+        category: "framework",
+        check: detect_nextjs,
+    },
+    TechDetector {
+        name: "React",
+        category: "frontend",
+        check: detect_react,
+    },
+    TechDetector {
+        name: "Vue.js",
+        category: "frontend",
+        check: detect_vue,
+    },
+    TechDetector {
+        name: "Angular",
+        category: "frontend",
+        check: detect_angular,
+    },
+    TechDetector {
+        name: "Nginx",
+        category: "webserver",
+        check: detect_nginx,
+    },
+    TechDetector {
+        name: "Apache",
+        category: "webserver",
+        check: detect_apache,
+    },
+    TechDetector {
+        name: "IIS",
+        category: "webserver",
+        check: detect_iis,
+    },
+    TechDetector {
+        name: "Cloudflare",
+        category: "cdn",
+        check: detect_cloudflare,
+    },
 ];
 
 fn fetch_info(url: &str) -> Result<ResponseInfo, String> {
@@ -173,7 +232,10 @@ fn fetch_info(url: &str) -> Result<ResponseInfo, String> {
 
     let resp = client
         .get(url)
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 GhostMirror/0.1")
+        .header(
+            "User-Agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 GhostMirror/0.1",
+        )
         .send()
         .map_err(|e| format!("request failed: {}", e))?;
 
@@ -183,7 +245,9 @@ fn fetch_info(url: &str) -> Result<ResponseInfo, String> {
         .iter()
         .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
         .collect();
-    let body = resp.text().map_err(|e| format!("body read failed: {}", e))?;
+    let body = resp
+        .text()
+        .map_err(|e| format!("body read failed: {}", e))?;
 
     Ok(ResponseInfo {
         status,
@@ -235,7 +299,11 @@ pub fn fingerprint(url: &str) -> Result<FingerprintResult, String> {
         target: url.to_string(),
         technologies: detected,
         cloudflare,
-        waf: if cloudflare { "Cloudflare".into() } else { String::new() },
+        waf: if cloudflare {
+            "Cloudflare".into()
+        } else {
+            String::new()
+        },
         cms,
     })
 }
@@ -258,10 +326,7 @@ mod tests {
 
     #[test]
     fn test_detect_wordpress() {
-        let info = make_info(
-            "<meta name=\"generator\" content=\"WordPress 6.0\" />",
-            &[],
-        );
+        let info = make_info("<meta name=\"generator\" content=\"WordPress 6.0\" />", &[]);
         assert!(detect_wordpress(&info));
     }
 
