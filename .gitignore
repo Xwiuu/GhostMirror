@@ -54,3 +54,14 @@ config/settings.yaml
 # Rust build artifacts
 ghostmirror-rs/target/
 ghostmirror-rs/Cargo.lock
+
+# Scan outputs and caches
+*.har
+*.jsonl
+*.sqlite
+*.db
+*.log
+tmp/
+.cache/
+playwright-report/
+test-results/

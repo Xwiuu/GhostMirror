@@ -2958,6 +2958,329 @@ def cmd_lab_create_project(
 
 
 # --------------------------------------------------------------------------- #
+# Bug Bounty Mode sub-app
+# --------------------------------------------------------------------------- #
+bounty_app = typer.Typer(help="Bug Bounty Mode: reconhecimento avançado de aplicações modernas/SPAs.")
+app.add_typer(bounty_app, name="bounty")
+
+
+@bounty_app.callback(invoke_without_command=True)
+def cmd_bounty_callback(ctx: typer.Context) -> None:
+    """Bug Bounty Mode entry point - lists all available bug bounty commands."""
+    if ctx.invoked_subcommand is not None:
+        return
+    console.print(Panel.fit(
+        "[bold cyan]Bug Bounty Mode[/]\n\n"
+        "Comandos disponíveis:\n"
+        "  [green]crawl[/]     Headless crawler (descobre rotas SPA)\n"
+        "  [green]js[/]        JS Bundle Intelligence\n"
+        "  [green]apis[/]      API Discovery\n"
+        "  [green]secrets[/]   Secrets Discovery\n"
+        "  [green]report[/]    Gera relatório Bug Bounty\n"
+        "  [green]scan[/]      Executa Bug Bounty completo\n\n"
+        "Use [bold]ghostmirror bounty <comando> --help[/] para detalhes.",
+        border_style="cyan",
+    ))
+
+
+@bounty_app.command("crawl", help="Headless crawler: descobre rotas SPA, links e forms renderizados.")
+def cmd_bounty_crawl(
+    ctx: typer.Context,
+    target: str = typer.Argument(..., help="URL alvo (ex: https://example.com)"),
+    max_pages: int = typer.Option(10, "--max-pages", help="Máximo de páginas a crawlear"),
+    max_depth: int = typer.Option(2, "--max-depth", help="Profundidade máxima do crawl"),
+    timeout: int = typer.Option(30, "--timeout", help="Timeout em segundos por página"),
+) -> None:
+    ctx = _resolve_context(ctx)
+    try:
+        from ghostmirror.modules.bug_bounty.headless_crawler import HeadlessCrawler
+        from ghostmirror.modules.bug_bounty.scope_guard import BountyScopeGuard
+
+        crawler = HeadlessCrawler(max_pages=max_pages, max_depth=max_depth, timeout=timeout)
+        guard = None
+        if ctx and ctx.active_project:
+            guard = BountyScopeGuard(project_path=ctx.active_project.path)
+
+        with console.status("[bold cyan]Crawleando alvo com headless browser...[/]"):
+            routes = crawler.crawl(target, guard)
+
+        if not routes:
+            console.print("[yellow]Nenhuma rota descoberta.[/]")
+            return
+
+        table = Table(box=box.ROUNDED, header_style="bold cyan", title=f"Rotas Descobertas ({len(routes)})")
+        table.add_column("URL", style="green")
+        table.add_column("Status")
+        table.add_column("Title")
+        table.add_column("Tipo")
+        for r in routes:
+            status_color = "green" if r.status == 200 else ("yellow" if r.status < 400 else "red")
+            table.add_row(r.url, f"[{status_color}]{r.status}[/]", r.title[:60], r.route_type)
+        console.print(table)
+    except Exception as exc:
+        if "Playwright" in str(exc):
+            console.print("[yellow]Playwright não está instalado. Execute:[/]")
+            console.print("  [bold]pip install playwright[/]")
+            console.print("  [bold]python -m playwright install chromium[/]")
+        else:
+            console.print(f"[bold red]Erro:[/] {exc}")
+            raise typer.Exit(code=1)
+
+
+@bounty_app.command("js", help="JS Bundle Intelligence: analisa bundles JS em busca de rotas, endpoints e segredos.")
+def cmd_bounty_js(
+    ctx: typer.Context,
+    target: str = typer.Argument(..., help="URL alvo"),
+) -> None:
+    ctx = _resolve_context(ctx)
+    try:
+        from ghostmirror.modules.bug_bounty.js_bundle_analyzer import JSBundleAnalyzer
+
+        analyzer = JSBundleAnalyzer()
+
+        js_urls = _collect_js_urls(target)
+        if not js_urls:
+            console.print("[yellow]Nenhum bundle JS encontrado.[/]")
+            return
+
+        with console.status("[bold cyan]Analisando bundles JS...[/]"):
+            profiles = analyzer.analyze(js_urls)
+
+        if not profiles:
+            console.print("[yellow]Nenhuma informação extraída dos bundles JS.[/]")
+            return
+
+        total_endpoints = len(analyzer.get_all_endpoints(profiles))
+        total_routes = len(analyzer.get_all_routes(profiles))
+        total_secrets = sum(len(p.secrets) for p in profiles)
+        total_comments = sum(len(p.comments) for p in profiles)
+
+        console.print(f"[bold green]JS Bundle Intelligence[/]\n")
+        console.print(f"  Bundles analisados: {len(profiles)}")
+        console.print(f"  Endpoints descobertos: {total_endpoints}")
+        console.print(f"  Rotas frontend: {total_routes}")
+        console.print(f"  Segredos potenciais: {total_secrets}")
+        console.print(f"  Comentários interessantes: {total_comments}")
+
+        if total_endpoints > 0:
+            table = Table(box=box.ROUNDED, header_style="bold cyan", title="Endpoints nos Bundles")
+            table.add_column("Endpoint")
+            eps = list(set(analyzer.get_all_endpoints(profiles)))
+            for ep in sorted(eps)[:30]:
+                table.add_row(ep)
+            console.print(table)
+
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
+@bounty_app.command("apis", help="API Discovery: descobre endpoints de API combinando múltiplas fontes.")
+def cmd_bounty_apis(
+    ctx: typer.Context,
+) -> None:
+    ctx = _resolve_context(ctx)
+    if not ctx or not ctx.active_project:
+        console.print("[yellow]Nenhum projeto ativo. Use 'ghostmirror open <slug>' primeiro.[/]")
+        raise typer.Exit(code=1)
+
+    try:
+        from ghostmirror.modules.bug_bounty.api_discovery import APIDiscovery
+
+        discovery = APIDiscovery()
+        apis = discovery.combine()
+
+        if not apis:
+            console.print("[yellow]Nenhuma API descoberta.[/]")
+            return
+
+        table = Table(box=box.ROUNDED, header_style="bold cyan", title=f"API Inventory ({len(apis)})")
+        table.add_column("Método")
+        table.add_column("URL")
+        table.add_column("Fonte")
+        table.add_column("Confiança")
+        for api in apis:
+            table.add_row(api.method, api.url, api.source, api.confidence)
+        console.print(table)
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
+@bounty_app.command("secrets", help="Secrets Discovery: busca segredos expostos em HTML e JS (redigido).")
+def cmd_bounty_secrets(
+    ctx: typer.Context,
+    target: str = typer.Argument(..., help="URL alvo"),
+) -> None:
+    ctx = _resolve_context(ctx)
+    try:
+        import httpx
+        from ghostmirror.modules.bug_bounty.secrets_discovery import SecretsDiscovery
+
+        with console.status("[bold cyan]Buscando segredos..."):
+            resp = httpx.get(target, timeout=15.0, verify=False)
+            html = resp.text
+            js_urls = _collect_js_urls(target)
+            js_content = ""
+            for js_url in js_urls:
+                try:
+                    js_resp = httpx.get(js_url, timeout=10.0, verify=False)
+                    js_content += js_resp.text + "\n"
+                except Exception:
+                    pass
+
+            discovery = SecretsDiscovery()
+            secrets = discovery.scan(html, js_content, target)
+
+        if not secrets:
+            console.print("[green]Nenhum segredo potencial encontrado.[/]")
+            return
+
+        table = Table(box=box.ROUNDED, header_style="bold cyan", title=f"Segredos Potenciais ({len(secrets)})")
+        table.add_column("Tipo")
+        table.add_column("Valor (Redigido)")
+        table.add_column("Severidade")
+        table.add_column("Local")
+        for s in secrets:
+            sev_color = {"critical": "red", "high": "red", "medium": "yellow", "low": "green"}.get(s.severity, "white")
+            table.add_row(s.type, s.redacted_snippet, f"[{sev_color}]{s.severity.upper()}[/]", s.location)
+        console.print(table)
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
+@bounty_app.command("report", help="Gera relatório Bug Bounty com todas as descobertas.")
+def cmd_bounty_report(
+    ctx: typer.Context,
+) -> None:
+    ctx = _resolve_context(ctx)
+    if not ctx or not ctx.active_project:
+        console.print("[yellow]Nenhum projeto ativo. Use 'ghostmirror open <slug>' primeiro.[/]")
+        raise typer.Exit(code=1)
+
+    try:
+        from ghostmirror.modules.bug_bounty.engine import BugBountyEngine
+
+        engine = BugBountyEngine(profile="bounty")
+        with console.status("[bold cyan]Gerando relatório Bug Bounty..."):
+            result = engine.analyze_project(ctx.active_project.path)
+
+        if result.get("status") == "skipped":
+            console.print(f"[yellow]Bug Bounty Mode: {result.get('reason', 'Skipped')}[/]")
+            return
+
+        report_data = result.get("report", {})
+        score = report_data.get("overall_score", 0)
+        level = report_data.get("risk_level", "INFO")
+
+        score_color = "green" if score <= 20 else ("yellow" if score <= 40 else ("red" if score <= 70 else "red"))
+        console.print(f"\n[bold]Bug Bounty Report[/]")
+        console.print(f"  Score: [bold {score_color}]{score}/100 ({level})[/]")
+        console.print(f"  Rotas: {report_data.get('total_routes', 0)}")
+        console.print(f"  APIs: {report_data.get('total_apis', 0)}")
+        console.print(f"  Bundles JS: {report_data.get('total_bundles', 0)}")
+        console.print(f"  Segredos: {report_data.get('total_secrets', 0)}")
+        console.print(f"  Oportunidades: {report_data.get('total_opportunities', 0)}")
+        console.print(f"  Subdomínios: {report_data.get('total_subdomains', 0)}")
+
+        recs = report_data.get("recommendations", [])
+        if recs:
+            console.print("\n[bold cyan]Recomendações:[/]")
+            for rec in recs:
+                console.print(f"  • {rec}")
+
+        console.print(f"\n[dim]Relatório salvo em: profiles/bug_bounty/bug_bounty_report.json[/]")
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
+@bounty_app.command("scan", help="Executa Bug Bounty completo (crawl + JS + APIs + secrets + report).")
+def cmd_bounty_scan(
+    ctx: typer.Context,
+    target: str = typer.Argument(..., help="URL alvo (ex: https://example.com)"),
+    profile: str = typer.Option("bounty", "--profile", help="Perfil de reconhecimento (lite, standard, deep, bounty)"),
+) -> None:
+    ctx = _resolve_context(ctx)
+    try:
+        from ghostmirror.modules.bug_bounty.engine import BugBountyEngine
+
+        engine = BugBountyEngine(profile=profile)
+        with console.status("[bold cyan]Executando Bug Bounty Scan..."):
+            result = engine.analyze_project(
+                ctx.active_project.path if ctx and ctx.active_project else ctx.config.projects_dir,
+                target,
+            )
+
+        if result.get("status") == "skipped":
+            console.print(f"[yellow]Bug Bounty: {result.get('reason', 'Skipped')}[/]")
+            return
+
+        report_data = result.get("report", {})
+        score = report_data.get("overall_score", 0)
+        level = report_data.get("risk_level", "INFO")
+
+        score_color = "green" if score <= 20 else ("yellow" if score <= 40 else ("red" if score <= 70 else "red"))
+        console.print(f"\n[bold green]✓ Bug Bounty Scan concluído[/]")
+        console.print(f"  Score: [bold {score_color}]{score}/100 ({level})[/]")
+        console.print(f"  Rotas: {report_data.get('total_routes', 0)}")
+        console.print(f"  APIs: {report_data.get('total_apis', 0)}")
+        console.print(f"  Segredos: {report_data.get('total_secrets', 0)}")
+        console.print(f"  Oportunidades: {report_data.get('total_opportunities', 0)}")
+
+        opps = result.get("opportunities", [])
+        if opps:
+            table = Table(box=box.ROUNDED, header_style="bold cyan", title="Oportunidades")
+            table.add_column("Título")
+            table.add_column("Score")
+            table.add_column("Severidade")
+            table.add_column("Tipo")
+            for o in sorted(opps, key=lambda x: x.get("score", 0), reverse=True)[:10]:
+                sev_color = {"CRITICAL": "red", "HIGH": "red", "MEDIUM": "yellow", "LOW": "green"}.get(
+                    o.get("severity", "LOW"), "white"
+                )
+                table.add_row(
+                    o.get("title", "")[:60],
+                    str(o.get("score", 0)),
+                    f"[{sev_color}]{o.get('severity', 'LOW')}[/]",
+                    o.get("type", ""),
+                )
+            console.print(table)
+    except Exception as exc:
+        if "Playwright" in str(exc):
+            console.print("[yellow]Playwright não está instalado. Execute:[/]")
+            console.print("  [bold]pip install playwright[/]")
+            console.print("  [bold]python -m playwright install chromium[/]")
+        else:
+            console.print(f"[bold red]Erro:[/] {exc}")
+            raise typer.Exit(code=1)
+
+
+def _collect_js_urls(target: str) -> list[str]:
+    import httpx
+    import re
+    from urllib.parse import urljoin
+
+    js_urls = []
+    try:
+        resp = httpx.get(target, timeout=15.0, verify=False)
+        script_pattern = re.compile(r'<script\s[^>]*src=["\'](.*?)["\']', re.IGNORECASE)
+        for match in script_pattern.findall(resp.text):
+            absolute = urljoin(target, match.strip())
+            if absolute not in js_urls:
+                js_urls.append(absolute)
+    except Exception:
+        pass
+    return js_urls
+
+
+def _resolve_context(ctx: typer.Context) -> AppContext | None:
+    """Resolve AppContext from Typer context if available."""
+    return ctx.parent.obj if ctx.parent and hasattr(ctx.parent, "obj") else getattr(ctx, "obj", None)
+
+
+# --------------------------------------------------------------------------- #
 # Findings Intelligence sub-app
 # --------------------------------------------------------------------------- #
 findings_app = typer.Typer(help="Finding Intelligence Engine: enriquece, prioriza e analisa findings.")
@@ -3155,6 +3478,271 @@ def cmd_findings_quick_wins(
         if win.get("recommendation"):
             console.print(f"   → {win['recommendation'][:180]}")
         console.print()
+
+
+# --------------------------------------------------------------------------- #
+# Bug Bounty sub-app
+# --------------------------------------------------------------------------- #
+bounty_app = typer.Typer(help="Bug Bounty Mode — Headless crawling, JS intelligence, API discovery, secrets, recon.")
+app.add_typer(bounty_app, name="bounty")
+
+
+@bounty_app.command("scan", help="Executa o Bug Bounty Engine completo (crawl + JS + APIs + secrets + recon).")
+def cmd_bounty_scan(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+    profile: str = typer.Option("bounty", "--profile", help="Perfil de recon (lite, standard, deep, bounty)"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    scope = app_ctx.projects.read_scope(handle)
+    target = handle.metadata.domain or (scope.targets.domains[0] if scope.targets.domains else "")
+    if not target:
+        console.print("[bold red]Nenhum alvo cadastrado no projeto.[/]")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.bug_bounty.engine import BugBountyEngine
+    engine = BugBountyEngine(profile=profile)
+    try:
+        with console.status(f"[bold green]Executando Bug Bounty ({profile.upper()})..."):
+            result = engine.analyze_project(handle.path, target)
+        if result.get("status") == "skipped":
+            console.print(f"[yellow]Bug Bounty pulado: {result.get('reason', '')}[/]")
+            return
+        console.print("[bold green]Bug Bounty Scan concluído![/]")
+        console.print(f"Rotas: {len(result.get('routes', []))}")
+        console.print(f"APIs: {len(result.get('apis', []))}")
+        console.print(f"Segredos: {len(result.get('secrets', []))}")
+        console.print(f"Oportunidades: {result.get('findings_generated', 0)}")
+        console.print(f"Score: {result.get('overall_score', 0)}/100 — {result.get('risk_level', 'INFO')}")
+    except Exception as exc:
+        console.print(f"[bold red]Erro no Bug Bounty Scan:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
+@bounty_app.command("crawl", help="Executa apenas o headless crawler para descobrir rotas SPA.")
+def cmd_bounty_crawl(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+    max_pages: int = typer.Option(10, "--max-pages", help="Máximo de páginas para crawlear"),
+    max_depth: int = typer.Option(2, "--max-depth", help="Profundidade máxima do crawl"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    scope = app_ctx.projects.read_scope(handle)
+    target = handle.metadata.domain or (scope.targets.domains[0] if scope.targets.domains else "")
+    if not target:
+        console.print("[bold red]Nenhum alvo cadastrado.[/]")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.bug_bounty.headless_crawler import HeadlessCrawler
+    from ghostmirror.modules.bug_bounty.scope_guard import BountyScopeGuard
+    scope_guard = BountyScopeGuard(handle.path, max_pages=max_pages, max_depth=max_depth, timeout=30)
+    scope_guard.load_scope()
+    target_url = target if target.startswith("http") else f"https://{target}"
+    crawler = HeadlessCrawler(max_pages=max_pages, max_depth=max_depth)
+    try:
+        with console.status("[bold green]Crawleando com headless browser..."):
+            routes = crawler.crawl(target_url, scope_guard)
+        console.print(f"[bold green]Crawl concluído! {len(routes)} rotas encontradas.[/]")
+        table = Table(box=box.ROUNDED, header_style="bold cyan", title="Headless Routes")
+        table.add_column("URL")
+        table.add_column("Status")
+        table.add_column("Title")
+        table.add_column("Type")
+        for r in routes[:25]:
+            table.add_row(r.url[:80], str(r.status), r.title[:50], r.route_type)
+        console.print(table)
+        if len(routes) > 25:
+            console.print(f"[dim]Mostrando 25 de {len(routes)} rotas[/]")
+    except Exception as exc:
+        console.print(f"[bold red]Erro no crawl:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
+@bounty_app.command("js", help="Analisa bundles JavaScript em busca de endpoints, secrets e rotas.")
+def cmd_bounty_js(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    scope = app_ctx.projects.read_scope(handle)
+    target = handle.metadata.domain or (scope.targets.domains[0] if scope.targets.domains else "")
+    if not target:
+        console.print("[bold red]Nenhum alvo cadastrado.[/]")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.bug_bounty.js_bundle_analyzer import JSBundleAnalyzer
+    analyzer = JSBundleAnalyzer()
+    target_url = target if target.startswith("http") else f"https://{target}"
+    import httpx, re
+    from urllib.parse import urljoin
+    js_urls = []
+    try:
+        resp = httpx.get(target_url, timeout=15.0, verify=False,
+                         headers={"User-Agent": "GhostMirror-BugBounty/1.0"})
+        if resp.status_code == 200:
+            for match in re.finditer(r'<script\s[^>]*src=["\'](.*?)["\']', resp.text, re.IGNORECASE):
+                js_urls.append(urljoin(target_url, match.group(1).strip()))
+    except Exception as exc:
+        console.print(f"[yellow]Aviso ao buscar HTML: {exc}[/]")
+
+    if not js_urls:
+        console.print("[yellow]Nenhum script encontrado no HTML.[/]")
+        return
+
+    with console.status(f"[bold green]Analisando {len(js_urls)} bundles JavaScript..."):
+        profiles = analyzer.analyze(js_urls)
+
+    if not profiles:
+        console.print("[yellow]Nenhum bundle pôde ser analisado.[/]")
+        return
+
+    console.print(f"[bold green]{len(profiles)} bundles analisados![/]")
+    all_endpoints = set()
+    all_secrets = set()
+    all_routes = set()
+    for p in profiles:
+        all_endpoints.update(p.endpoints)
+        all_secrets.update(p.secrets)
+        all_routes.update(p.routes)
+        if p.source_map_present:
+            console.print(f"  [yellow]⚠ Source map presente: {p.source_map_url}[/]")
+
+    console.print(f"\nEndpoints: [bold]{len(all_endpoints)}[/]")
+    for ep in sorted(all_endpoints)[:20]:
+        console.print(f"  - {ep}")
+    if len(all_endpoints) > 20:
+        console.print(f"  ... e mais {len(all_endpoints) - 20}")
+
+    if all_secrets:
+        console.print(f"\n[red]⚠ Secrets encontrados: {len(all_secrets)}[/]")
+        for s in sorted(all_secrets)[:10]:
+            console.print(f"  - {s[:60]}")
+
+    if all_routes:
+        console.print(f"\nRotas frontend: {len(all_routes)}")
+        for r in sorted(all_routes)[:15]:
+            console.print(f"  - {r}")
+
+
+@bounty_app.command("apis", help="Exibe o inventário de APIs descobertas pelo Bug Bounty.")
+def cmd_bounty_apis(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    import json
+    path = handle.path / "profiles" / "bug_bounty" / "api_inventory.json"
+    if not path.exists():
+        console.print("[yellow]Execute 'ghostmirror bounty scan' primeiro.[/]")
+        raise typer.Exit(code=1)
+    with open(path, "r", encoding="utf-8") as f:
+        apis = json.load(f)
+    console.print(f"\n[bold cyan]API Inventory ({len(apis)} endpoints)[/]\n")
+    table = Table(box=box.ROUNDED, header_style="bold cyan")
+    table.add_column("Method")
+    table.add_column("URL")
+    table.add_column("Source")
+    table.add_column("Confidence")
+    for a in apis[:30]:
+        table.add_row(
+            a.get("method", "GET"),
+            a.get("url", "")[:80],
+            a.get("source", ""),
+            a.get("confidence", ""),
+        )
+    console.print(table)
+    if len(apis) > 30:
+        console.print(f"[dim]Mostrando 30 de {len(apis)} APIs[/]")
+
+
+@bounty_app.command("secrets", help="Escaneia por secrets expostos em HTML e JS.")
+def cmd_bounty_secrets(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    import json
+    path = handle.path / "profiles" / "bug_bounty" / "secrets_discovery.json"
+    if not path.exists():
+        console.print("[yellow]Execute 'ghostmirror bounty scan' primeiro.[/]")
+        raise typer.Exit(code=1)
+    with open(path, "r", encoding="utf-8") as f:
+        secrets = json.load(f)
+    if not secrets:
+        console.print("[green]Nenhum secret encontrado.[/]")
+        return
+    console.print(f"\n[bold red]⚠ Secrets encontrados: {len(secrets)}[/]\n")
+    table = Table(box=box.ROUNDED, header_style="bold cyan")
+    table.add_column("Type")
+    table.add_column("Redacted Value")
+    table.add_column("Severity")
+    table.add_column("Location")
+    for s in secrets:
+        sev_color = "red" if s.get("severity", "").upper() in ("CRITICAL", "HIGH") else "yellow"
+        table.add_row(
+            s.get("type", ""),
+            f"[green]{s.get('redacted_snippet', '')}[/]",
+            f"[{sev_color}]{s.get('severity', '').upper()}[/]",
+            s.get("location", "")[:60],
+        )
+    console.print(table)
+
+
+@bounty_app.command("report", help="Exibe o relatório completo do Bug Bounty Mode.")
+def cmd_bounty_report(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    import json
+    path = handle.path / "profiles" / "bug_bounty" / "bug_bounty_report.json"
+    if not path.exists():
+        console.print("[yellow]Execute 'ghostmirror bounty scan' primeiro.[/]")
+        raise typer.Exit(code=1)
+    with open(path, "r", encoding="utf-8") as f:
+        report = json.load(f)
+
+    console.print(f"\n[bold cyan]Bug Bounty Report[/]")
+    console.print(f"Target: [green]{report.get('target', '?')}[/]")
+    console.print(f"Score: {report.get('overall_score', 0)}/100 — {report.get('risk_level', 'INFO')}")
+    console.print(f"\nSummary:")
+    console.print(f"  Routes: {report.get('total_routes', 0)}")
+    console.print(f"  APIs: {report.get('total_apis', 0)}")
+    console.print(f"  Bundles: {report.get('total_bundles', 0)}")
+    console.print(f"  Secrets: {report.get('total_secrets', 0)}")
+    console.print(f"  Subdomains: {report.get('total_subdomains', 0)}")
+    console.print(f"  Opportunities: {report.get('total_opportunities', 0)}")
+
+    opps = report.get("opportunities", [])
+    if opps:
+        console.print(f"\n[bold]Opportunity Matrix ({len(opps)}):[/]")
+        table = Table(box=box.ROUNDED, header_style="bold cyan")
+        table.add_column("Score")
+        table.add_column("Severity")
+        table.add_column("Title")
+        table.add_column("Type")
+        for o in sorted(opps, key=lambda x: x.get("score", 0), reverse=True)[:10]:
+            sev = o.get("severity", "LOW")
+            sev_color = "red" if sev in ("CRITICAL", "HIGH") else "yellow"
+            table.add_row(
+                str(o.get("score", 0)),
+                f"[{sev_color}]{sev}[/]",
+                o.get("title", "")[:60],
+                o.get("type", ""),
+            )
+        console.print(table)
+
+    recs = report.get("recommendations", [])
+    if recs:
+        console.print(f"\n[bold]Recommendations:[/]")
+        for r in recs:
+            console.print(f"  • {r}")
 
 
 # --------------------------------------------------------------------------- #

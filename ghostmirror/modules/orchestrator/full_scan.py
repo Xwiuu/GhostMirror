@@ -20,6 +20,9 @@ STEP_DEPENDENCIES: dict[str, list[str]] = {
     "cve_intelligence": ["fingerprint"],
     "nuclei": ["cve_intelligence", "technology_intelligence"],
     "web_intelligence": ["fingerprint"],
+    "bug_bounty": ["web_intelligence", "fingerprint"],
+    "vulnerability_intelligence": ["cve_intelligence"],
+    "finding_intelligence": ["vulnerability_intelligence"],
 }
 
 
@@ -139,7 +142,7 @@ class FullScanOrchestrator:
             formats = ["html"]
             if self.profile == "standard":
                 formats = ["html", "md"]
-            elif self.profile == "deep":
+            elif self.profile in ("deep", "bounty"):
                 formats = ["html", "md", "pdf"]
 
             log.info("FULL_SCAN_REPORT_GENERATION run_id={} formats={}", context.run_id, formats)
@@ -298,6 +301,14 @@ class FullScanOrchestrator:
             )
             result = scanner.run()
             return len(result.findings)
+
+        elif step_name == "bug_bounty":
+            from ghostmirror.modules.bug_bounty.engine import BugBountyEngine
+            engine = BugBountyEngine(profile="bounty")
+            result = engine.analyze_project(self.project_path, self.target)
+            if result.get("status") == "skipped":
+                raise FileNotFoundError(result.get("reason", "Dependency not available"))
+            return result.get("findings_generated", 0)
 
         elif step_name == "intelligence":
             from ghostmirror.modules.intelligence.engine import IntelligenceEngine

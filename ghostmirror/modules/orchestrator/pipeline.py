@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Literal
 
-ProfileName = Literal["quick", "standard", "deep"]
+ProfileName = Literal["quick", "standard", "deep", "bounty"]
 
 PIPELINE_PROFILES: dict[str, list[str]] = {
     "quick": [
@@ -39,12 +39,26 @@ PIPELINE_PROFILES: dict[str, list[str]] = {
         "web_intelligence",
         "report",
     ],
+    "bounty": [
+        "headers",
+        "ssl",
+        "nmap",
+        "fingerprint",
+        "technology_intelligence",
+        "web_intelligence",
+        "bug_bounty",
+        "vulnerability_intelligence",
+        "finding_intelligence",
+        "intelligence",
+        "report",
+    ],
 }
 
 PIPELINE_DESCRIPTIONS: dict[str, str] = {
     "quick": "≈ 5 min — Headers, SSL, Nmap, Fingerprint",
     "standard": "≈ 15 min — Quick + Intelligence + Nuclei + OWASP + Web",
     "deep": "Completo — Standard + Payloads + Intelligence + Web + PDF Report",
+    "bounty": "Bug Bounty — Full recon + JS Intelligence + API Discovery + Secrets + Subdomains",
 }
 
 ALIASES: dict[str, str] = {

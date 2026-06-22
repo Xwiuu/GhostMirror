@@ -19,6 +19,13 @@ timeouts:
   nuclei: 900.0
   ssl: 30.0
   headers: 30.0
+  bug_bounty_crawl: 30.0
+
+bug_bounty:
+  max_pages: 10
+  max_depth: 2
+  timeout: 30
+  rate_limit_delay: 1.0
 
 rate_limits:
   nmap_threads: 10
@@ -50,6 +57,18 @@ profiles:
     - cve_intelligence
     - nuclei
     - owasp
+    - report
+  bounty:
+    - headless_crawler
+    - network_capture
+    - js_bundle_analyzer
+    - sourcemap_analyzer
+    - api_discovery
+    - parameter_mining
+    - secrets_discovery
+    - interesting_files
+    - subdomain_discovery
+    - scoring
     - report
 
 reporting:

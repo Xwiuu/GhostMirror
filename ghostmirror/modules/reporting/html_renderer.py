@@ -1110,6 +1110,118 @@ class HTMLReportRenderer:
         html_template += """
         </div>
 
+        <!-- BUG BOUNTY MODE -->
+        """
+        bb_report = collected_data.get("profiles", {}).get("bug_bounty_report") or {}
+        bb_routes = collected_data.get("profiles", {}).get("bug_bounty_routes") or []
+        bb_apis = collected_data.get("profiles", {}).get("bug_bounty_apis") or []
+        bb_secrets = collected_data.get("profiles", {}).get("bug_bounty_secrets") or []
+        bb_opportunities = collected_data.get("profiles", {}).get("bug_bounty_opportunities") or []
+        bb_js_bundles = collected_data.get("profiles", {}).get("bug_bounty_js_bundles") or []
+        bb_sourcemaps = collected_data.get("profiles", {}).get("bug_bounty_sourcemaps") or []
+        bb_subdomains = collected_data.get("profiles", {}).get("bug_bounty_subdomains") or []
+        bb_interesting = collected_data.get("profiles", {}).get("bug_bounty_interesting_files") or []
+
+        if bb_report:
+            html_template += '<div class="section">'
+            html_template += '<h2 class="section-title">🎯 Bug Bounty Mode</h2>'
+            html_template += '<p>Advanced reconnaissance for modern/SPA applications — headless crawling, JS intelligence, API discovery, and opportunity scoring.</p>'
+
+            # Summary metrics
+            html_template += '<div class="dashboard-grid" style="grid-template-columns: repeat(4, 1fr);">'
+            metrics = [
+                ("Rotas", bb_report.get("total_routes", 0)),
+                ("APIs", bb_report.get("total_apis", 0)),
+                ("Segredos", bb_report.get("total_secrets", 0)),
+                ("Oportunidades", bb_report.get("total_opportunities", 0)),
+            ]
+            for label, value in metrics:
+                html_template += f'<div class="card"><div style="font-size:2rem;font-weight:bold;color:var(--accent-color)">{value}</div><div style="color:var(--text-muted)">{label}</div></div>'
+            html_template += '</div>'
+
+            # Score
+            bb_score = bb_report.get("overall_score", 0)
+            bb_level = bb_report.get("risk_level", "INFO")
+            html_template += f'<div class="card"><p><strong>Bug Bounty Score:</strong> {bb_score}/100 — {bb_level}</p></div>'
+
+            # Headless Routes
+            if bb_routes:
+                html_template += '<h4>Headless Routes</h4><table class="data-table"><tr><th>URL</th><th>Status</th><th>Title</th><th>Type</th></tr>'
+                for r in bb_routes[:15]:
+                    html_template += f'<tr><td><code>{r.get("url", "")}</code></td><td>{r.get("status", 0)}</td><td>{r.get("title", "")}</td><td>{r.get("route_type", "")}</td></tr>'
+                html_template += '</table>'
+                if len(bb_routes) > 15:
+                    html_template += f'<p class="text-muted">Showing 15 of {len(bb_routes)} routes</p>'
+
+            # API Inventory
+            if bb_apis:
+                html_template += '<h4>API Inventory</h4><table class="data-table"><tr><th>Method</th><th>URL</th><th>Source</th><th>Confidence</th></tr>'
+                for a in bb_apis[:15]:
+                    html_template += f'<tr><td>{a.get("method", "GET")}</td><td><code>{a.get("url", "")}</code></td><td>{a.get("source", "")}</td><td>{a.get("confidence", "")}</td></tr>'
+                html_template += '</table>'
+
+            # JS Bundles
+            if bb_js_bundles:
+                html_template += '<h4>JS Bundle Intelligence</h4><table class="data-table"><tr><th>Bundle</th><th>Size</th><th>Endpoints</th><th>Secrets</th><th>Source Map</th></tr>'
+                for b in bb_js_bundles[:10]:
+                    sm = "⚠ Yes" if b.get("source_map_present") else "No"
+                    html_template += f'<tr><td><code>{b.get("url", "")[:60]}</code></td><td>{b.get("size", 0)}</td><td>{len(b.get("endpoints", []))}</td><td>{len(b.get("secrets", []))}</td><td>{sm}</td></tr>'
+                html_template += '</table>'
+
+            # Source Maps
+            exposed_maps = [s for s in bb_sourcemaps if s.get("exposed")]
+            if exposed_maps:
+                html_template += '<h4>⚠ Exposed Source Maps</h4><table class="data-table"><tr><th>Source Map URL</th><th>Files</th><th>Endpoints</th></tr>'
+                for sm in exposed_maps[:5]:
+                    html_template += f'<tr><td><code>{sm.get("sourcemap_url", "")}</code></td><td>{len(sm.get("files", []))}</td><td>{len(sm.get("endpoints", []))}</td></tr>'
+                html_template += '</table>'
+
+            # Secrets (redacted)
+            if bb_secrets:
+                html_template += '<h4>Potential Secrets</h4><table class="data-table"><tr><th>Type</th><th>Redacted</th><th>Severity</th></tr>'
+                for s in bb_secrets[:10]:
+                    html_template += f'<tr><td>{s.get("type", "")}</td><td><code>{s.get("redacted_snippet", "")}</code></td><td>{s.get("severity", "").upper()}</td></tr>'
+                html_template += '</table>'
+
+            # Interesting Files
+            found_files = [f for f in bb_interesting if f.get("found")]
+            if found_files:
+                html_template += '<h4>Sensitive Files Exposed</h4><table class="data-table"><tr><th>Path</th><th>Status</th><th>Size</th></tr>'
+                for f in found_files[:10]:
+                    html_template += f'<tr><td><code>{f.get("path", "")}</code></td><td>{f.get("status", 0)}</td><td>{f.get("size", 0)}</td></tr>'
+                html_template += '</table>'
+
+            # Subdomains
+            if bb_subdomains:
+                html_template += '<h4>Subdomains Discovered</h4><table class="data-table"><tr><th>Hostname</th><th>Source</th><th>IPs</th></tr>'
+                for s in bb_subdomains[:10]:
+                    html_template += f'<tr><td><code>{s.get("hostname", "")}</code></td><td>{s.get("source", "")}</td><td>{", ".join(s.get("resolved_ips", []))}</td></tr>'
+                html_template += '</table>'
+
+            # Opportunities
+            if bb_opportunities:
+                html_template += '<h4>Opportunity Matrix</h4><table class="data-table"><tr><th>Score</th><th>Severity</th><th>Title</th><th>Type</th></tr>'
+                for o in sorted(bb_opportunities, key=lambda x: x.get("score", 0), reverse=True)[:10]:
+                    sev = o.get("severity", "LOW")
+                    html_template += f'<tr><td><strong>{o.get("score", 0)}</strong></td><td><strong>{sev}</strong></td><td>{o.get("title", "")}</td><td>{o.get("type", "")}</td></tr>'
+                html_template += '</table>'
+
+            # Recommendations
+            bb_recs = bb_report.get("recommendations", [])
+            if bb_recs:
+                html_template += '<h4>Bug Bounty Recommendations</h4><ul>'
+                for rec in bb_recs:
+                    html_template += f'<li>{rec}</li>'
+                html_template += '</ul>'
+
+            html_template += '</div>'
+        else:
+            html_template += '<div class="section">'
+            html_template += '<h2 class="section-title">🎯 Bug Bounty Mode</h2>'
+            html_template += '<p><em>Bug Bounty data not available. Run <code>ghostmirror bounty scan</code> to generate.</em></p>'
+            html_template += '</div>'
+
+        html_template += """
         <!-- INTELLIGENCE ANALYSIS -->
         <h3 class="section-title">9. Attack Surface Intelligence</h3>
         <div class="card" style="text-align: left;">

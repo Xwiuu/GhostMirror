@@ -133,3 +133,22 @@
 - Doctor extended: validates lab catalog integrity and compose file presence
 - 48 unit tests (100% mocked Docker, no real containers)
 - Documentation: `docs/LAB_MODE.md`
+
+## Sprint 14.2 — Bug Bounty Mode
+- Full bug bounty recon pipeline with 9 modules orchestrated by `BugBountyEngine`
+- **Headless Crawler**: Playwright-based navigation with request interception and form extraction
+- **Network Capture**: ingest captured requests, filter by scope, detect API candidates
+- **JS Bundle Analyzer**: download and analyze JS bundles for sourcemaps, endpoints, secrets
+- **Sourcemap Analyzer**: discover and parse `.map` files for source code exposure
+- **API Discovery**: combine network, JS, sourcemap, and web intelligence sources
+- **Parameter Mining**: extract parameters from forms, routes, and JS
+- **Secrets Discovery**: regex-based scanning for 10+ secret types with auto-redaction
+- **Interesting Files**: check for robots.txt, .env, backup, admin, sitemap, etc.
+- **Subdomain Discovery**: CT logs (crt.sh), HTML links, JS URLs + DNS resolution
+- **Scoring & Recommendations**: prioritize opportunities and generate actionable recommendations
+- **Report Builder**: consolidate findings into `BugBountyReport` model
+- **Findings Mapper**: map bounty findings into standard `FindingModel` for reporting
+- CLI group: `ghostmirror bounty scan|crawl|js|apis|secrets|report`
+- BountyScopeGuard: rate-limited, depth-controlled scope enforcement
+- 153 unit tests (100% mocked, no real network/Playwright)
+- Documentation: `docs/BUG_BOUNTY_MODE.md`

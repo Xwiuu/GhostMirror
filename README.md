@@ -1,6 +1,6 @@
 # GhostMirror
 
-**Internal Pentest Automation Platform** — v1.0-alpha (Sprint 14.1)
+**Internal Pentest Automation Platform** — v1.0-alpha (Sprint 14.2)
 
 GhostMirror is an **internal** platform used exclusively by our software house for
 **authorized** security audits, attack-surface mapping, security assessments and
@@ -31,6 +31,7 @@ categories are disabled by default and must be opted into deliberately.
 - Pipeline resilience — missing tools skip steps, errors never crash the pipeline
 - Multi-format report generation (HTML, Markdown, PDF) with module execution summary
 - **Lab Mode** — controlled vulnerable environments (Juice Shop, DVWA, WebGoat, Vuln Demo) for training and testing
+- **Bug Bounty Mode** — headless recon, JS analysis, API discovery, parameter mining, secrets detection, subdomain discovery, automated reporting
 - **Platform diagnostics**: `doctor`, `health-check`, `status`, `doctor --fix`
 - Rich progress dashboard with live-updating module table
 - User-friendly error handling (no Python tracebacks exposed)
@@ -234,6 +235,17 @@ ghostmirror scan rust-fingerprint --url https://example.com
 
 ```bash
 python -m ghostmirror.integrations.rust.benchmark
+```
+
+### Bug Bounty commands
+
+```bash
+ghostmirror bounty scan --project <slug> --target https://example.com
+ghostmirror bounty crawl --project <slug> --target https://example.com
+ghostmirror bounty js --project <slug> --target https://example.com
+ghostmirror bounty apis --project <slug>
+ghostmirror bounty secrets --project <slug>
+ghostmirror bounty report --project <slug>
 ```
 
 ### Non-interactive commands
@@ -443,3 +455,4 @@ ghostmirror report generate --project <slug> --format pdf
 | **12** | **Rust Engine Foundation (port scanner, banner, fingerprint, Python bridge)** | ✅ |
 | **13** | **Safe Payload Engine (non-destructive payloads, dry-run, safety policy)** | ✅ |
 | **14.1** | **UX Hardening: new interactive menu, pipeline resilience, progress dashboard, error handler, doctor --fix, logging enrichment, report module summary, lab Rich tables** | ✅ |
+| **14.2** | **Bug Bounty Mode: headless crawling, JS/sourcemap analysis, API discovery, parameter mining, secrets detection, interesting files, subdomain discovery, scoring & reporting** | ✅ |

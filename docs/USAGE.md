@@ -126,3 +126,29 @@ ghostmirror lab stop juice-shop
 ```
 
 See [LAB_MODE.md](LAB_MODE.md) for full documentation.
+
+## Bug Bounty Mode
+
+Automated reconnaissance for authorized bug bounty targets:
+
+```bash
+# Full bounty scan (headless crawl + JS analysis + API discovery + secrets)
+ghostmirror bounty scan --project <slug> --target https://example.com
+
+# Headless crawl only
+ghostmirror bounty crawl --project <slug> --target https://example.com
+
+# JS bundle analysis
+ghostmirror bounty js --project <slug> --target https://example.com
+
+# Show discovered APIs
+ghostmirror bounty apis --project <slug>
+
+# Show discovered secrets
+ghostmirror bounty secrets --project <slug>
+
+# Show bounty report
+ghostmirror bounty report --project <slug>
+```
+
+See [BUG_BOUNTY_MODE.md](BUG_BOUNTY_MODE.md) for full documentation.

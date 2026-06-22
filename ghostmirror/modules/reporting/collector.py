@@ -156,6 +156,34 @@ class ReportCollector:
                 "web_attack_surface": self._load_json_dict(
                     self.profiles_dir / "web_intelligence" / "attack_surface.json"
                 ),
+                # Bug Bounty
+                "bug_bounty_report": self._load_json_dict(
+                    self.profiles_dir / "bug_bounty" / "bug_bounty_report.json"
+                ),
+                "bug_bounty_routes": self._load_json_list(
+                    self.profiles_dir / "bug_bounty" / "headless_routes.json"
+                ),
+                "bug_bounty_apis": self._load_json_list(
+                    self.profiles_dir / "bug_bounty" / "api_inventory.json"
+                ),
+                "bug_bounty_secrets": self._load_json_list(
+                    self.profiles_dir / "bug_bounty" / "secrets_discovery.json"
+                ),
+                "bug_bounty_opportunities": self._load_json_list(
+                    self.profiles_dir / "bug_bounty" / "bug_bounty_opportunities.json"
+                ),
+                "bug_bounty_js_bundles": self._load_json_list(
+                    self.profiles_dir / "bug_bounty" / "js_bundle_profile.json"
+                ),
+                "bug_bounty_sourcemaps": self._load_json_list(
+                    self.profiles_dir / "bug_bounty" / "sourcemap_profile.json"
+                ),
+                "bug_bounty_subdomains": self._load_json_list(
+                    self.profiles_dir / "bug_bounty" / "subdomain_profile.json"
+                ),
+                "bug_bounty_interesting_files": self._load_json_list(
+                    self.profiles_dir / "bug_bounty" / "interesting_files.json"
+                ),
             },
         }
 

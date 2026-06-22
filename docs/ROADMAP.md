@@ -34,6 +34,12 @@
 - Safe experimentation without affecting production
 - Automated lab provisioning and teardown
 
+### Sprint 14.2 — Bug Bounty Mode ✅
+- Headless crawling, JS/sourcemap analysis, API discovery
+- Parameter mining, secrets detection, interesting files
+- Subdomain discovery, automated scoring & reporting
+- CLI: `ghostmirror bounty scan|crawl|js|apis|secrets|report`
+
 ### Sprint 15 — Dashboard
 - Web-based dashboard for real-time scan monitoring
 - Historical trend analysis and visual reports

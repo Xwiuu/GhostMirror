@@ -2,6 +2,28 @@
 
 All notable changes to GhostMirror are documented here.
 
+## v1.0-alpha — 2026-06-22
+
+### Bug Bounty Mode (Sprint 14.2)
+- New `BugBountyEngine` orchestrating 9-module recon pipeline
+- **Headless Crawler**: Playwright-based crawling with XHR/fetch interception and form extraction
+- **Network Capture**: request ingestion, scope filtering, API candidate detection
+- **JS Bundle Analyzer**: download JS bundles, detect sourcemaps, endpoints, secrets
+- **Sourcemap Analyzer**: discover `.map` files, extract original sources and endpoints
+- **API Discovery**: multi-source consolidation (network, JS, sourcemap, web intelligence)
+- **Parameter Mining**: extract params from forms, routes, and JS bundles
+- **Secrets Discovery**: 10+ regex patterns (Google Maps, AWS, JWT, Slack, GitHub, etc.) with auto-redaction
+- **Interesting Files**: check robots.txt, .env, backup, admin, sitemap.xml, .git, etc.
+- **Subdomain Discovery**: CT logs (crt.sh), HTML links, JS URLs + DNS resolution
+- **Scoring & Recommendations**: opportunity scoring, risk classification, actionable recommendations
+- **Report Builder**: `BugBountyReport` model with consolidated findings
+- **Findings Mapper**: maps bounty findings to standard `FindingModel` entries
+- CLI group: `ghostmirror bounty scan|crawl|js|apis|secrets|report`
+- `BountyScopeGuard`: rate-limited, depth-controlled scope enforcement
+- 153 unit tests (100% mocked, no real network/Playwright)
+- Documentation: `docs/BUG_BOUNTY_MODE.md`
+- Updated README, CHANGELOG, USAGE, SPRINTS, ROADMAP
+
 ## v1.0-alpha — 2026-06-18
 
 ### UX Hardening & Operator Experience (Sprint 14.1)
