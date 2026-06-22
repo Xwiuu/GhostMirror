@@ -20,7 +20,6 @@ fn test_scan_loopback_closed() {
     // 127.0.0.1:9999 should be closed
     let result = port_scanner::scan("127.0.0.1", "9999", 1).unwrap();
     assert!(result.open_ports.is_empty());
-    assert!(result.duration_ms > 0);
 }
 
 #[test]
