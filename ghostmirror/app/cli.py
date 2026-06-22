@@ -4516,6 +4516,277 @@ def cmd_analyze_zeroday(
 
 
 # --------------------------------------------------------------------------- #
+# Attack Chain Intelligence commands
+# --------------------------------------------------------------------------- #
+attack_chain_app = typer.Typer(help="Attack Chain Intelligence — transform isolated signals into prioritized attack chains.")
+app.add_typer(attack_chain_app, name="attack-chain")
+
+
+@attack_chain_app.command("run", help="Executa o Attack Chain Intelligence Engine completo.")
+def cmd_attack_chain_run(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.attack_chain.engine import AttackChainEngine
+
+    engine = AttackChainEngine()
+    try:
+        with console.status("[bold green]Executando Attack Chain Intelligence..."):
+            report = engine.analyze_project(handle.path)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante Attack Chain Intelligence:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    score_color = "red" if report.risk_level in ("critical", "high") else "yellow" if report.risk_level == "medium" else "green"
+    console.print("---")
+    console.print("ATTACK CHAIN INTELLIGENCE — COMPLETE\n")
+    console.print(f"Overall Score: [{score_color}]{report.overall_score}/100 ({report.risk_level})[/]")
+    console.print(f"Signals: [bold]{report.total_signals}[/] | Nodes: [bold]{report.total_nodes}[/] | Edges: [bold]{report.total_edges}[/] | Chains: [bold]{report.total_chains}[/]")
+    console.print(f"\n[bold]Top Attack Chains:[/]")
+    for tc in report.top_chains[:5]:
+        c = "[red]" if tc.get("priority") == "critical" else "[orange1]" if tc.get("priority") == "high" else "[yellow]" if tc.get("priority") == "medium" else "[dim]"
+        console.print(f"  #{tc.get('rank', '?')} {c}{tc.get('title', 'N/A')}[/] (Score: {tc.get('score', 0)})")
+    console.print("\n[bold]Attack Graph Summary:[/]")
+    gs = report.attack_graph_summary
+    console.print(f"  Nodes: {gs.get('total_nodes', 0)} | Edges: {gs.get('total_edges', 0)}")
+    node_types = gs.get("node_types", {})
+    if node_types:
+        console.print(f"  Types: {', '.join(f'{k}={v}' for k, v in node_types.items())}")
+    console.print("\n[bold]Business Impact Summary:[/]")
+    for bi in report.business_impact_summary[:5]:
+        console.print(f"  • {bi.get('impact', '')} ({bi.get('count', 0)} chains)")
+    console.print(f"\nProfiles saved to: profiles/attack_chain/")
+    console.print("---")
+
+
+@attack_chain_app.command("graph", help="Exibe o resumo do grafo de ataque.")
+def cmd_attack_chain_graph(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    import json
+    graph_path = handle.path / "profiles" / "attack_chain" / "attack_graph.json"
+    if not graph_path.exists():
+        console.print("[yellow]Attack graph not found. Run 'attack-chain run' first.[/]")
+        raise typer.Exit(code=1)
+
+    try:
+        with open(graph_path, "r", encoding="utf-8") as f:
+            graph = json.load(f)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao carregar grafo:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    nodes = graph.get("nodes", [])
+    edges = graph.get("edges", [])
+    console.print("---")
+    console.print("ATTACK GRAPH SUMMARY\n")
+    console.print(f"Total Nodes: [bold]{len(nodes)}[/]")
+    console.print(f"Total Edges: [bold]{len(edges)}[/]")
+    node_types: dict[str, int] = {}
+    for n in nodes:
+        nt = n.get("node_type", "Unknown")
+        node_types[nt] = node_types.get(nt, 0) + 1
+    console.print("\n[bold]Node Types:[/]")
+    for nt, count in sorted(node_types.items(), key=lambda x: x[1], reverse=True):
+        console.print(f"  {nt}: {count}")
+    edge_types: dict[str, int] = {}
+    for e in edges:
+        et = e.get("edge_type", "Unknown")
+        edge_types[et] = edge_types.get(et, 0) + 1
+    console.print("\n[bold]Edge Types:[/]")
+    for et, count in sorted(edge_types.items(), key=lambda x: x[1], reverse=True):
+        console.print(f"  {et}: {count}")
+    console.print("---")
+
+
+@attack_chain_app.command("top", help="Exibe as top attack chains priorizadas.")
+def cmd_attack_chain_top(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+    limit: int = typer.Option(5, "--limit", "-l", help="Número de chains a exibir"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    import json
+    chain_path = handle.path / "profiles" / "attack_chain" / "chains.json"
+    prio_path = handle.path / "profiles" / "attack_chain" / "attack_chain_priorities.json"
+
+    if not prio_path.exists() or not chain_path.exists():
+        console.print("[yellow]Attack chain data not found. Run 'attack-chain run' first.[/]")
+        raise typer.Exit(code=1)
+
+    try:
+        with open(prio_path, "r", encoding="utf-8") as f:
+            priorities = json.load(f)
+        with open(chain_path, "r", encoding="utf-8") as f:
+            chains = json.load(f)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao carregar dados:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    priorities.sort(key=lambda p: ({"critical": 4, "high": 3, "medium": 2, "low": 1}.get(p.get("priority", "low"), 0), p.get("score", 0)), reverse=True)
+
+    console.print("---")
+    console.print(f"TOP {limit} ATTACK CHAINS\n")
+    for i, p in enumerate(priorities[:limit]):
+        c = "[red]" if p.get("priority") == "critical" else "[orange1]" if p.get("priority") == "high" else "[yellow]" if p.get("priority") == "medium" else "[dim]"
+        console.print(f"[bold]#{i+1}[/] {c}{p.get('title', 'N/A')}[/]")
+        console.print(f"   Priority: {c}{p.get('priority', 'N/A')}[/] | Score: {p.get('score', 0)} | Confidence: {p.get('confidence', 0)}")
+        console.print(f"   Impact: {p.get('impact', 0)} | Exploitability: {p.get('exploitability', 0)}")
+        if p.get("business_impact"):
+            console.print(f"   Business Impact: {', '.join(p['business_impact'][:3])}")
+    console.print("---")
+
+
+@attack_chain_app.command("report", help="Exibe o resumo do relatório de Attack Chain Intelligence.")
+def cmd_attack_chain_report(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    import json
+    report_path = handle.path / "profiles" / "attack_chain" / "attack_chain_report.json"
+    if not report_path.exists():
+        console.print("[yellow]Attack chain report not found. Run 'attack-chain run' first.[/]")
+        raise typer.Exit(code=1)
+
+    try:
+        with open(report_path, "r", encoding="utf-8") as f:
+            report = json.load(f)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao carregar relatório:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("ATTACK CHAIN INTELLIGENCE REPORT\n")
+    console.print(f"Target: [bold]{report.get('target', 'N/A')}[/]")
+    console.print(f"Project: [bold]{report.get('project', 'N/A')}[/]")
+    console.print(f"Generated: [dim]{report.get('generated_at', 'N/A')}[/]")
+    console.print(f"\n[bold]Overall Score:[/] {report.get('overall_score', 0)}/100 — {report.get('risk_level', 'N/A')}")
+    console.print(f"\n[bold]Signals:[/] {report.get('total_signals', 0)}")
+    console.print(f"[bold]Nodes:[/] {report.get('total_nodes', 0)}")
+    console.print(f"[bold]Edges:[/] {report.get('total_edges', 0)}")
+    console.print(f"[bold]Chains:[/] {report.get('total_chains', 0)}")
+    console.print(f"\n[bold]Priority Matrix:[/]")
+    for entry in report.get("priority_matrix", [])[:5]:
+        c = "[red]" if entry.get("priority") == "critical" else "[orange1]" if entry.get("priority") == "high" else "[yellow]"
+        console.print(f"  #{entry.get('rank', '?')} {c}{entry.get('title', 'N/A')}[/] (Score: {entry.get('score', 0)})")
+    console.print(f"\n[bold]Business Impact Summary:[/]")
+    for bi in report.get("business_impact_summary", [])[:5]:
+        console.print(f"  • {bi.get('impact', '')} ({bi.get('count', 0)} chains)")
+    if report.get("technical_impact_summary"):
+        console.print(f"\n[bold]Technical Impact Summary:[/]")
+        for ti in report["technical_impact_summary"][:5]:
+            console.print(f"  • {ti}")
+    console.print("---")
+
+
+@analyze_app.command("attack-chain", help="Executa o Attack Chain Intelligence Engine e exibe o resumo.")
+def cmd_analyze_attack_chain(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.attack_chain.engine import AttackChainEngine
+
+    engine = AttackChainEngine()
+    try:
+        with console.status("[bold green]Executando Attack Chain Intelligence..."):
+            report = engine.analyze_project(handle.path)
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    score_color = "red" if report.risk_level in ("critical", "high") else "yellow" if report.risk_level == "medium" else "green"
+    console.print("---")
+    console.print("ATTACK CHAIN INTELLIGENCE — COMPLETE\n")
+    console.print(f"Overall Score: [{score_color}]{report.overall_score}/100 ({report.risk_level})[/]")
+    console.print(f"Signals: {report.total_signals} | Chains: {report.total_chains}")
+    console.print(f"Top: {len(report.top_chains)} chains identified")
+    console.print("---")
+
+
+# --------------------------------------------------------------------------- #
 # Add analyze findings command
 # --------------------------------------------------------------------------- #
 @analyze_app.command("findings", help="Finding Intelligence Engine - enriquece todos os findings do projeto.")

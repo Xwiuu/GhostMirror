@@ -215,3 +215,18 @@
 - Report integration: Bug Bounty Submissions section in main reports
 - Documentation: `docs/HACKERONE_STYLE_REPORTING.md`
 - 96 unit tests covering all modules
+
+## Sprint 18 — Attack Chain Intelligence ✅
+- 15-module attack chain intelligence pipeline
+- `SignalCollector` consuming signals from 10+ modules
+- `GraphBuilder` with 8 node types and 6 edge types
+- `ChainBuilder` with 10 predefined chain templates
+- `ChainScoring` engine (0-100 score with 9 weighted factors)
+- `ChainPrioritizer` sorted by priority, score, confidence, business impact
+- `BusinessImpactAnalyzer` and `TechnicalImpactAnalyzer`
+- `RecommendationsEngine` generating defensive recommendations per signal type
+- `EvidenceLinker` connecting chains to source files
+- `AttackChainReportBuilder` with priority matrix, impact summary, graph summary
+- Full pipeline integration (standard, deep, bounty profiles)
+- CLI: `ghostmirror attack-chain run|graph|top|report`, `ghostmirror analyze attack-chain`
+- Documentation: `docs/ATTACK_CHAIN_INTELLIGENCE.md`

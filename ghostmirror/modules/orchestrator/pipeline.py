@@ -25,6 +25,7 @@ PIPELINE_PROFILES: dict[str, list[str]] = {
         "web_intelligence",
         "api_security",
         "zero_day",
+        "attack_chain",
         "report",
     ],
     "deep": [
@@ -41,6 +42,7 @@ PIPELINE_PROFILES: dict[str, list[str]] = {
         "web_intelligence",
         "api_security",
         "zero_day",
+        "attack_chain",
         "report",
     ],
     "bounty": [
@@ -56,15 +58,16 @@ PIPELINE_PROFILES: dict[str, list[str]] = {
         "intelligence",
         "api_security",
         "zero_day",
+        "attack_chain",
         "report",
     ],
 }
 
 PIPELINE_DESCRIPTIONS: dict[str, str] = {
     "quick": "≈ 5 min — Headers, SSL, Nmap, Fingerprint",
-    "standard": "≈ 20 min — Quick + Intelligence + Nuclei + OWASP + Web + Zero-Day Hypothesis",
-    "deep": "Completo — Standard + Payloads + Intelligence + Web + Zero-Day + PDF Report",
-    "bounty": "Bug Bounty — Full recon + JS Intelligence + API Discovery + Secrets + Subdomains + API Security + Zero-Day",
+    "standard": "≈ 20 min — Quick + Intelligence + Nuclei + OWASP + Web + Zero-Day + Attack Chain",
+    "deep": "Completo — Standard + Payloads + Intelligence + Web + Zero-Day + Attack Chain + PDF Report",
+    "bounty": "Bug Bounty — Full recon + JS Intelligence + API Discovery + Secrets + Subdomains + API Security + Zero-Day + Attack Chain",
 }
 
 ALIASES: dict[str, str] = {

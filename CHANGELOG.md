@@ -41,6 +41,26 @@ All notable changes to GhostMirror are documented here.
 - Documentation: `docs/ZERO_DAY_HYPOTHESIS_ENGINE.md`
 - Updated README, CHANGELOG, USAGE, SPRINTS, ROADMAP
 
+### Attack Chain Intelligence (Sprint 18)
+- New `AttackChainEngine` orchestrating 15-module attack chain intelligence pipeline
+- **Signal Collector**: consumes signals from web intelligence, API security, bug bounty, zero-day, vulnerability intelligence, finding intelligence, headers, nuclei, OWASP, SSL/Nmap
+- **Graph Builder**: constructs attack graph with 8 node types and 6 edge types
+- **Chain Builder**: matches signals against 10 predefined chain templates
+- **Chain Scoring**: weighted 0-100 score based on severity, confidence, exploitability, exposure, business impact, known exploitation
+- **Chain Classifier**: critical/high/medium/low classification
+- **Chain Prioritizer**: sorts by priority, score, confidence, business impact, exploitability
+- **Business Impact Analyzer**: account takeover, data exposure, payment manipulation, regulatory
+- **Technical Impact Analyzer**: auth bypass, sensitive object access, XSS surface, privilege boundary
+- **Recommendations Engine**: defensive recommendations per signal type
+- **Evidence Linker**: connects chains to source files without duplicating sensitive data
+- **Report Builder**: priority matrix, impact summary, graph summary, top chains
+- 6 Pydantic models: AttackChainSignal, AttackChainNode, AttackChainEdge, AttackChainPath, AttackChainReport, AttackChainPriority
+- CLI group: `ghostmirror attack-chain run|graph|top|report` + `ghostmirror analyze attack-chain`
+- Pipeline integration: attack_chain step in standard, deep, and bounty profiles (after zero_day, before report)
+- Report integration: Attack Chain Intelligence collected in report collector
+- Documentation: `docs/ATTACK_CHAIN_INTELLIGENCE.md`
+- Updated README, CHANGELOG, USAGE, SPRINTS, ROADMAP
+
 ### API Security Intelligence (Sprint 15)
 - New `APISecurityEngine` orchestrating 21-module API intelligence pipeline
 - **API Inventory**: multi-source consolidation (web intel, bug bounty, JS, network, endpoint mapper)

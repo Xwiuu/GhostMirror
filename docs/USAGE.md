@@ -259,3 +259,30 @@ The Zero-Day Hypothesis Engine operates on previously collected data (web intell
 > **Important**: This engine does NOT find zero-days automatically. It generates hypotheses, anomalies, and research opportunities that require manual validation by a security researcher.
 
 See [ZERO_DAY_HYPOTHESIS_ENGINE.md](ZERO_DAY_HYPOTHESIS_ENGINE.md) for full documentation.
+
+## Attack Chain Intelligence
+
+Transforms isolated security signals into prioritized, comprehensible attack chains:
+
+```bash
+# Full Attack Chain Intelligence analysis
+ghostmirror attack-chain run --project <slug>
+
+# View attack graph summary
+ghostmirror attack-chain graph --project <slug>
+
+# View top prioritized chains
+ghostmirror attack-chain top --project <slug> --limit 5
+
+# View full report summary
+ghostmirror attack-chain report --project <slug>
+
+# Via analyze sub-app
+ghostmirror analyze attack-chain --project <slug>
+```
+
+The Attack Chain Intelligence engine operates on all previously collected intelligence data. Run a full pipeline scan first.
+
+> **Attack chains are hypotheses for authorized manual review, not proof of compromise.**
+
+See [ATTACK_CHAIN_INTELLIGENCE.md](ATTACK_CHAIN_INTELLIGENCE.md) for full documentation.

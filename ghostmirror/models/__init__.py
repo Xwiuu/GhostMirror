@@ -76,6 +76,14 @@ from ghostmirror.models.bounty_report import BountyReport
 from ghostmirror.models.reproduction_step import ReproductionStep
 from ghostmirror.models.evidence_block import EvidenceBlock
 
+# Attack Chain Intelligence models
+from ghostmirror.models.attack_chain_signal import AttackChainSignal, SignalType
+from ghostmirror.models.attack_chain_node import AttackChainNode, NodeType
+from ghostmirror.models.attack_chain_edge import AttackChainEdge, EdgeType
+from ghostmirror.models.attack_chain_path import AttackChainPath
+from ghostmirror.models.attack_chain_report import AttackChainReport
+from ghostmirror.models.attack_chain_priority import AttackChainPriority
+
 __all__ = [
     "ProjectModel",
     "ProjectStatus",
@@ -153,4 +161,14 @@ __all__ = [
     "BountyReport",
     "ReproductionStep",
     "EvidenceBlock",
+    # Attack Chain Intelligence
+    "AttackChainSignal",
+    "SignalType",
+    "AttackChainNode",
+    "NodeType",
+    "AttackChainEdge",
+    "EdgeType",
+    "AttackChainPath",
+    "AttackChainReport",
+    "AttackChainPriority",
 ]

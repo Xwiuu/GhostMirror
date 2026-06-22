@@ -243,6 +243,22 @@ class ReportCollector:
                 "zero_day_hypotheses": self._load_json_list(
                     self.profiles_dir / "zero_day" / "hypotheses.json"
                 ),
+                # Attack Chain Intelligence
+                "attack_chain_report": self._load_json_dict(
+                    self.profiles_dir / "attack_chain" / "attack_chain_report.json"
+                ),
+                "attack_chain_graph": self._load_json_dict(
+                    self.profiles_dir / "attack_chain" / "attack_graph.json"
+                ),
+                "attack_chain_chains": self._load_json_list(
+                    self.profiles_dir / "attack_chain" / "chains.json"
+                ),
+                "attack_chain_priorities": self._load_json_list(
+                    self.profiles_dir / "attack_chain" / "attack_chain_priorities.json"
+                ),
+                "attack_chain_signals": self._load_json_list(
+                    self.profiles_dir / "attack_chain" / "signals.json"
+                ),
                 "zero_day_opportunities": self._load_json_list(
                     self.profiles_dir / "zero_day" / "business_logic_opportunities.json"
                 ),

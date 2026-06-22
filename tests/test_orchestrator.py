@@ -107,7 +107,7 @@ def test_full_scan_orchestrator_success(
 
     # 4. Verify results
     assert timeline["profile"] == "standard"
-    assert len(timeline["steps"]) == 13  # 12 scanners/intelligence + 1 report
+    assert len(timeline["steps"]) == 14  # 13 scanners/intelligence + 1 report
 
     # Assert specific step outputs
     steps = {s["name"]: s for s in timeline["steps"]}

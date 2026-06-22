@@ -73,6 +73,13 @@
 - 96 unit tests, full docs
 - Documentation: `docs/HACKERONE_STYLE_REPORTING.md`
 
+### Sprint 18 — Attack Chain Intelligence ✅
+- 15-module attack chain intelligence pipeline
+- Signal collection from 10+ modules, attack graph construction
+- 10 chain templates, scoring 0-100, prioritization, impact analysis
+- CLI: `ghostmirror attack-chain run|graph|top|report`, `ghostmirror analyze attack-chain`
+- Documentation: `docs/ATTACK_CHAIN_INTELLIGENCE.md`
+
 - Web-based dashboard for real-time scan monitoring
 - Historical trend analysis and visual reports
 - Team collaboration features
