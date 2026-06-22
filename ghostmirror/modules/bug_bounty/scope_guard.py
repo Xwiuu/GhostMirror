@@ -45,6 +45,9 @@ class BountyScopeGuard:
         for domain in self._scope.targets.domains:
             if host == domain or host.endswith("." + domain):
                 return True
+        for allowed_url in self._scope.targets.urls:
+            if url.startswith(allowed_url.rstrip("/")):
+                return True
         return False
 
     def enforce_scope(self, url: str) -> None:

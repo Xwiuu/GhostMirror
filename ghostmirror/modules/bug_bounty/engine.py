@@ -7,6 +7,7 @@ from typing import Any
 from ghostmirror.core.exceptions import ToolNotFoundError
 from ghostmirror.core.logger import get_logger
 from ghostmirror.models.bug_bounty_report import BugBountyReport
+from ghostmirror.models.js_bundle_profile import JSBundleProfile
 from ghostmirror.modules.bug_bounty.api_discovery import APIDiscovery
 from ghostmirror.modules.bug_bounty.headless_crawler import HeadlessCrawler
 from ghostmirror.modules.bug_bounty.interesting_files import InterestingFiles
@@ -78,6 +79,7 @@ class BugBountyEngine:
         captured_requests: list[dict[str, Any]] = []
         captured_forms: list[dict[str, Any]] = []
         js_bundle_profiles: list[dict[str, Any]] = []
+        profiles: list[JSBundleProfile] = []
         sourcemap_results: list[dict[str, Any]] = []
         api_inventory: list[dict[str, Any]] = []
         mined_params: list[dict[str, Any]] = []
@@ -128,7 +130,7 @@ class BugBountyEngine:
 
                 elif step == "api_discovery":
                     js_endpoints = self.js_bundle_analyzer.get_all_endpoints(
-                        [p for p in js_bundle_profiles]
+                        profiles
                     )
                     network_entries = self.network_capture.get_api_candidates()
                     sourcemap_eps = []

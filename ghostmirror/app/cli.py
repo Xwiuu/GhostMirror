@@ -3496,7 +3496,7 @@ def cmd_bounty_scan(
     app_ctx: AppContext = ctx.obj
     handle = _resolve_project(app_ctx, project)
     scope = app_ctx.projects.read_scope(handle)
-    target = handle.metadata.domain or (scope.targets.domains[0] if scope.targets.domains else "")
+    target = (scope.targets.urls[0] if scope.targets.urls else "") or handle.metadata.domain or (scope.targets.domains[0] if scope.targets.domains else "")
     if not target:
         console.print("[bold red]Nenhum alvo cadastrado no projeto.[/]")
         raise typer.Exit(code=1)
@@ -3530,7 +3530,7 @@ def cmd_bounty_crawl(
     app_ctx: AppContext = ctx.obj
     handle = _resolve_project(app_ctx, project)
     scope = app_ctx.projects.read_scope(handle)
-    target = handle.metadata.domain or (scope.targets.domains[0] if scope.targets.domains else "")
+    target = (scope.targets.urls[0] if scope.targets.urls else "") or handle.metadata.domain or (scope.targets.domains[0] if scope.targets.domains else "")
     if not target:
         console.print("[bold red]Nenhum alvo cadastrado.[/]")
         raise typer.Exit(code=1)
@@ -3568,7 +3568,7 @@ def cmd_bounty_js(
     app_ctx: AppContext = ctx.obj
     handle = _resolve_project(app_ctx, project)
     scope = app_ctx.projects.read_scope(handle)
-    target = handle.metadata.domain or (scope.targets.domains[0] if scope.targets.domains else "")
+    target = (scope.targets.urls[0] if scope.targets.urls else "") or handle.metadata.domain or (scope.targets.domains[0] if scope.targets.domains else "")
     if not target:
         console.print("[bold red]Nenhum alvo cadastrado.[/]")
         raise typer.Exit(code=1)

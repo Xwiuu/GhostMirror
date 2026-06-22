@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ghostmirror.models.bug_bounty_opportunity import BugBountyOpportunity
 from ghostmirror.models.bug_bounty_report import BugBountyReport
 from ghostmirror.models.crawled_route import CrawledRoute
 from ghostmirror.models.discovered_api import DiscoveredAPI
@@ -50,6 +51,6 @@ class BountyReportBuilder:
         report.secrets = [DiscoveredSecret(**s) if isinstance(s, dict) else s for s in secrets]
         report.interesting_files = interesting_files
         report.subdomains = [SubdomainProfile(**s) if isinstance(s, dict) else s for s in subdomains]
-        report.opportunities = opportunities
+        report.opportunities = [BugBountyOpportunity(**o) if isinstance(o, dict) else o for o in opportunities]
 
         return report

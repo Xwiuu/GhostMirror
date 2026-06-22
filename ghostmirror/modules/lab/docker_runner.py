@@ -110,7 +110,8 @@ class DockerRunner:
             "json",
         ]
         result = self._run(cmd, timeout=timeout)
-        if not result["success"] or not result["stdout"].strip():
+        stdout = result.get("stdout")
+        if not result["success"] or not stdout or not stdout.strip():
             return []
 
         import json as j
