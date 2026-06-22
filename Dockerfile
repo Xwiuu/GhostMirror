@@ -3,7 +3,7 @@
 # interactive CLI via `docker compose run --rm ghostmirror interactive`.
 
 # Stage 1: Build Rust native engine
-FROM rust:1.85-slim AS rust-builder
+FROM rust:1.86-slim AS rust-builder
 WORKDIR /rust
 COPY ghostmirror-rs/ .
 RUN cargo build --release && \
