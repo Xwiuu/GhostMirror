@@ -24,6 +24,7 @@ STEP_DEPENDENCIES: dict[str, list[str]] = {
     "vulnerability_intelligence": ["cve_intelligence"],
     "finding_intelligence": ["vulnerability_intelligence"],
     "api_security": ["web_intelligence"],
+    "zero_day": ["web_intelligence", "api_security"],
 }
 
 
@@ -330,6 +331,13 @@ class FullScanOrchestrator:
             engine = APISecurityEngine()
             report = engine.analyze_project(self.project_path)
             findings_count = len(report.bola_indicators) + len(report.bfla_indicators) + len(report.mass_assignment_indicators) + len(report.opportunities)
+            return findings_count
+
+        elif step_name == "zero_day":
+            from ghostmirror.modules.zero_day.engine import ZeroDayEngine
+            engine = ZeroDayEngine()
+            report = engine.analyze_project(self.project_path, self.target)
+            findings_count = report.total_signals + report.total_hypotheses + report.total_opportunities + report.total_attack_chains
             return findings_count
 
         elif step_name == "payloads":

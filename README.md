@@ -1,6 +1,6 @@
 # GhostMirror
 
-**Internal Pentest Automation Platform** — v1.0-alpha (Sprint 15)
+**Internal Pentest Automation Platform** — v1.0-alpha (Sprint 16)
 
 GhostMirror is an **internal** platform used exclusively by our software house for
 **authorized** security audits, attack-surface mapping, security assessments and
@@ -33,6 +33,7 @@ categories are disabled by default and must be opted into deliberately.
 - **Lab Mode** — controlled vulnerable environments (Juice Shop, DVWA, WebGoat, Vuln Demo) for training and testing
 - **Bug Bounty Mode** — headless recon, JS analysis, API discovery, parameter mining, secrets detection, subdomain discovery, automated reporting
 - **API Security Intelligence** — non-destructive API analysis: inventory, Swagger/OpenAPI discovery, GraphQL detection, JWT intelligence, OAuth mapping, object mapping, BOLA/BFLA/Mass Assignment indicators, correlation engine, opportunity scoring, attack surface calculation
+- **Zero-Day Hypothesis Engine** — anomaly detection, differential analysis, hidden functionality discovery, business logic mapping, attack chain correlation, structured hypothesis generation with confidence scoring, prioritized research queue
 - **Platform diagnostics**: `doctor`, `health-check`, `status`, `doctor --fix`
 - Rich progress dashboard with live-updating module table
 - User-friendly error handling (no Python tracebacks exposed)
@@ -93,6 +94,7 @@ GHOSTMIRROR/
 │   │   ├── nuclei/                 # Nuclei vulnerability scanner
 │   │   ├── cve_intelligence/       # CVE matching engine
 │   │   ├── technology_intelligence/ # Technology risk engine
+│   │   ├── zero_day/               # Zero-Day Hypothesis Engine
 │   │   └── platform/               # Doctor, health-check, diagnostics, logging
 │   └── knowledge/                  # Knowledge databases (CVE, CMS, frameworks, etc.)
 ├── config/                         # Global configuration

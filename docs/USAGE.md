@@ -183,3 +183,33 @@ ghostmirror analyze api --project <slug> --target https://example.com
 The API Security Intelligence engine operates on previously collected data (web intelligence, bug bounty, technology profile). Run `ghostmirror web` or a full pipeline scan first to populate the required profiles.
 
 See [API_SECURITY_INTELLIGENCE.md](API_SECURITY_INTELLIGENCE.md) for full documentation.
+
+## Zero-Day Hypothesis Engine
+
+Non-destructive hypothesis generation for unknown vulnerabilities, anomalies, and research opportunities:
+
+```bash
+# Full Zero-Day Hypothesis Engine analysis
+ghostmirror zero-day run --project <slug>
+
+# View detected anomalies
+ghostmirror zero-day anomalies --project <slug>
+
+# View attack chains
+ghostmirror zero-day attack-chains --project <slug>
+
+# View generated hypotheses
+ghostmirror zero-day hypotheses --project <slug>
+
+# View prioritized research queue
+ghostmirror zero-day research --project <slug>
+
+# Via analyze sub-app
+ghostmirror analyze zero-day --project <slug>
+```
+
+The Zero-Day Hypothesis Engine operates on previously collected data (web intelligence, API security, bug bounty). Run a full pipeline scan first to populate the required profiles.
+
+> **Important**: This engine does NOT find zero-days automatically. It generates hypotheses, anomalies, and research opportunities that require manual validation by a security researcher.
+
+See [ZERO_DAY_HYPOTHESIS_ENGINE.md](ZERO_DAY_HYPOTHESIS_ENGINE.md) for full documentation.
