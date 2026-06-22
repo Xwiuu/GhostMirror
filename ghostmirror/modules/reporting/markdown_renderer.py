@@ -329,7 +329,58 @@ A avaliação OWASP Top 10 Light identificou **{owasp_total}** achados em **{len
 ---\n
 """
 
-        # 7. Vulnerability Intelligence
+        # 7. HackerOne Bug Bounty Submissions
+        bounty_report = collected_data["profiles"].get("bounty_report") or {}
+
+        if bounty_report:
+            stats = bounty_report.get("summary_stats", {})
+            md += "\n---\n"
+            md += "\n## 7. HACKERONE BUG BOUNTY SUBMISSIONS\n\n"
+            md += f"**Target:** {bounty_report.get('target', 'N/A')}  \n"
+            md += f"**Total Submissions:** {stats.get('total', 0)}  \n"
+            md += f"**Critical:** {stats.get('critical', 0)} | **High:** {stats.get('high', 0)} | **Medium:** {stats.get('medium', 0)} | **Low:** {stats.get('low', 0)} | **Info:** {stats.get('informational', 0)}\n\n"
+            top10 = bounty_report.get("top_10", [])
+            if top10:
+                md += "### Top 10 Submissions\n\n"
+                md += "| # | Title | Severity | Template |\n"
+                md += "|---|-------|----------|----------|\n"
+                for i, item in enumerate(top10[:10], 1):
+                    md += f"| {i} | {item.get('title', 'N/A')} | {item.get('severity', 'INFO')} | {item.get('template', 'N/A')} |\n"
+                md += "\n"
+            quick_wins = bounty_report.get("quick_wins", [])
+            if quick_wins:
+                md += "### Quick Wins\n\n"
+                for qw in quick_wins:
+                    md += f"- {qw}\n"
+                md += "\n"
+            research = bounty_report.get("research_targets", [])
+            if research:
+                md += "### Research Opportunities\n\n"
+                for r in research:
+                    md += f"- {r}\n"
+                md += "\n"
+            md += "Output reports saved to `reports/bounty/`:\n"
+            md += "- `bounty_report.json` — full data\n"
+            md += "- `bounty_report.md` — consolidated report\n"
+            md += "- `bounty_report.html` — visual report\n"
+            md += "- `submissions/H1-*.md` — individual submissions\n"
+            md += "- `index.json` — report index with statistics\n"
+            md += "\n---\n"
+        else:
+            md += """
+---
+
+## 7. HACKERONE BUG BOUNTY SUBMISSIONS
+
+Bug bounty and pentest submissions in HackerOne/Bugcrowd format.
+
+Run `ghostmirror bounty report --project <slug>` to generate.
+
+---
+
+"""
+
+        # 8. Vulnerability Intelligence
         vi_report = collected_data["profiles"].get("vulnerability_intelligence_report") or {}
         vi_priorities = collected_data["profiles"].get("vulnerability_priority") or []
         vi_epss = collected_data["profiles"].get("epss_profile") or []
@@ -339,9 +390,7 @@ A avaliação OWASP Top 10 Light identificou **{owasp_total}** achados em **{len
 
         if vi_report:
             md += """
----
-
-## 7. VULNERABILITY INTELLIGENCE
+## 8. VULNERABILITY INTELLIGENCE
 
 A plataforma de inteligência avançada de vulnerabilidades correlacionou CVEs, EPSS, KEV, Exploit Intelligence e superfície de ataque para priorização de riscos.
 
@@ -402,16 +451,14 @@ A plataforma de inteligência avançada de vulnerabilidades correlacionou CVEs, 
             md += "---\n"
         else:
             md += """
----
-
-## 7. VULNERABILITY INTELLIGENCE
+## 8. VULNERABILITY INTELLIGENCE
 
 *Dados de Vulnerability Intelligence não disponíveis. Execute `ghostmirror analyze vulnerabilities` ou `ghostmirror intelligence vulnerabilities` para gerar.*
 
 ---\n
 """
 
-        # 8. Web Intelligence
+        # 9. Web Intelligence
         wi_report = collected_data["profiles"].get("web_intelligence_report") or {}
         wi_endpoints = collected_data["profiles"].get("web_endpoint_inventory") or []
         wi_params = collected_data["profiles"].get("web_parameter_inventory") or []
@@ -426,7 +473,7 @@ A plataforma de inteligência avançada de vulnerabilidades correlacionou CVEs, 
             md += """
 ---
 
-## 8. WEB INTELLIGENCE
+## 9. WEB INTELLIGENCE
 
 A Web Intelligence Engine realizou uma análise passiva de vulnerabilidades web no alvo, identificando endpoints, parâmetros, indicadores e oportunidades de ataque.
 
@@ -487,14 +534,14 @@ A Web Intelligence Engine realizou uma análise passiva de vulnerabilidades web 
             md += """
 ---
 
-## 8. WEB INTELLIGENCE
+## 9. WEB INTELLIGENCE
 
 *Dados de Web Intelligence não disponíveis. Execute `ghostmirror web` ou `ghostmirror analyze web` para gerar.*
 
 ---\n
 """
 
-        # 9. Safe Payload Validation
+        # 10. Safe Payload Validation
         payload_profile = collected_data["profiles"].get("payload_profile") or {}
         payload_findings = all_findings_data.get("payload_findings") or []
 
@@ -508,7 +555,7 @@ A Web Intelligence Engine realizou uma análise passiva de vulnerabilidades web 
             pp_dry_run = payload_profile.get("dry_run", False)
 
             md += f"""
-## 9. SAFE PAYLOAD VALIDATION
+## 10. SAFE PAYLOAD VALIDATION
 
 A validação de payloads seguros registrou **{pp_total}** payloads, dos quais **{pp_executed}** foram executados e **{pp_blocked}** bloqueados.
 
@@ -531,14 +578,14 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
             md += "\n---\n"
         else:
             md += """
-## 9. SAFE PAYLOAD VALIDATION
+## 10. SAFE PAYLOAD VALIDATION
 
 *Dados do Safe Payload Validation não disponíveis. Execute `ghostmirror scan payloads` para gerar.*
 
 ---\n
 """
 
-        # 10. Attack Surface Intelligence
+        # 11. Attack Surface Intelligence
         as_profile = collected_data["profiles"].get("attack_surface_profile") or {}
         intel_report = collected_data["profiles"].get("intelligence_report") or {}
         risk_matrix_data = collected_data["profiles"].get("risk_matrix") or {}
@@ -559,7 +606,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
         dns_dkim = "MISSING" if dns.get("dkim_missing", True) else "OK"
 
         md += f"""
-## 10. ATTACK SURFACE INTELLIGENCE
+## 11. ATTACK SURFACE INTELLIGENCE
 
 ### WAF, CDN & Hosting Detection
 
@@ -576,7 +623,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
 
 ---
 
-## 11. RISK MATRIX
+## 12. RISK MATRIX
 
 """
 
@@ -613,7 +660,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
 
 ---
 
-## 12. ATTACK PATHS
+## 13. ATTACK PATHS
 
 """
 
@@ -652,12 +699,12 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
         else:
             md += "*No attack paths modeled. Run `ghostmirror analyze attack-paths` to generate.*\n\n"
 
-        # 13. Executive Summary
+        # 14. Executive Summary
         exec_summary_data = collected_data["profiles"].get("executive_summary") or {}
         summary_text = exec_summary_data.get("summary", intel_report.get("executive_summary", ""))
 
         md += """
-## 13. INTELLIGENCE EXECUTIVE SUMMARY
+## 14. INTELLIGENCE EXECUTIVE SUMMARY
 
 """
         if summary_text:
@@ -667,10 +714,10 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
 
         md += "---\n\n"
 
-        # 14. Pentest Recommendations
+        # 15. Pentest Recommendations
         intel_recommendations = intel_report.get("recommendations", [])
         md += """
-## 14. PENTEST RECOMMENDATIONS
+## 15. PENTEST RECOMMENDATIONS
 
 """
 
@@ -689,7 +736,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
         else:
             md += "*Pentest recommendations not available. Run `ghostmirror intelligence` to generate.*\n\n"
 
-        # 15. API Security Intelligence
+        # 16. API Security Intelligence
         api_report = collected_data["profiles"].get("api_security_report") or {}
         api_inv = collected_data["profiles"].get("api_inventory") or {}
         api_swagger = collected_data["profiles"].get("swagger_profile") or {}
@@ -710,7 +757,7 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
             md += """
 ---
 
-## 15. API SECURITY INTELLIGENCE
+## 16. API SECURITY INTELLIGENCE
 
 A API Security Intelligence Engine realizou uma análise passiva da superfície de APIs, identificando endpoints, tecnologias de autenticação, objetos sensíveis e oportunidades de ataque — sem exploração destrutiva.
 
@@ -795,9 +842,9 @@ A API Security Intelligence Engine realizou uma análise passiva da superfície 
 
             md += "---\n"
 
-        # 16. Next steps
+        # 17. Next steps
         md += """
-## 16. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
+## 17. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
 
 1. **Fase de Mitigação:** Priorize a aplicação de patches e atualizações nas tecnologias que apresentarem CVEs de criticidade Crítica ou Alta.
 2. **Hardening de Rede:** Restrinja o acesso a portas administrativas expostas utilizando regras de firewall estritas.

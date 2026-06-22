@@ -249,6 +249,10 @@ class ReportCollector:
                 "zero_day_research_queue": self._load_json_list(
                     self.profiles_dir / "zero_day" / "research_queue.json"
                 ),
+                # HackerOne / Bug Bounty Reporting
+                "bounty_report": self._load_json_dict(
+                    Path("reports") / "bounty" / "bounty_report.json"
+                ),
             },
         }
 

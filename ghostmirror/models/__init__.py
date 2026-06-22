@@ -69,6 +69,13 @@ from ghostmirror.models.api_risk import APIRisk
 from ghostmirror.models.api_security_report import APISecurityReport
 from ghostmirror.models.api_attack_surface import APIAttackSurface
 
+# Bounty / HackerOne Reporting models
+from ghostmirror.models.bounty_severity import BountySeverity, BountyPriority
+from ghostmirror.models.bounty_submission import BountySubmission
+from ghostmirror.models.bounty_report import BountyReport
+from ghostmirror.models.reproduction_step import ReproductionStep
+from ghostmirror.models.evidence_block import EvidenceBlock
+
 __all__ = [
     "ProjectModel",
     "ProjectStatus",
@@ -139,5 +146,11 @@ __all__ = [
     "APIRisk",
     "APISecurityReport",
     "APIAttackSurface",
+    # Bounty / HackerOne Reporting
+    "BountySeverity",
+    "BountyPriority",
+    "BountySubmission",
+    "BountyReport",
+    "ReproductionStep",
+    "EvidenceBlock",
 ]
-

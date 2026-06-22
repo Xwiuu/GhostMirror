@@ -5,6 +5,25 @@ All notable changes to GhostMirror are documented here.
 ## v1.0-alpha — 2026-06-22
 
 ### Zero-Day Hypothesis Engine (Sprint 16)
+### HackerOne Style Reporting (Sprint 17)
+- New `HackerOneReportingEngine` orchestrating 14-module bounty submission pipeline
+- **5 Pydantic models**: BountySubmission, BountyReport, ReproductionStep, EvidenceBlock, BountySeverity/BountyPriority
+- **Submission Builder**: consumes enriched findings, web indicators, API indicators, vulnerability intelligence, zero-day hypotheses
+- **Severity Mapper**: maps internal CRITICAL/HIGH/MEDIUM/LOW/INFO -> Critical/High/Medium/Low/Informational and P1-P5
+- **Safe Reproduction Steps**: observational, non-destructive steps for 15+ finding categories
+- **Impact Writer**: professional business and technical impact descriptions
+- **Evidence Formatter**: automatic redaction of tokens, secrets, cookies, API keys, JWT, AWS keys, GitHub tokens, Stripe keys
+- **Remediation Writer**: specific remediation for 15+ vulnerability categories
+- **References Mapper**: OWASP, CWE, PortSwigger, MITRE, NIST references integrated
+- **Template Renderer**: HackerOne, Bugcrowd, and Internal Pentest templates
+- **Exporters**: Markdown, JSON, and HTML (dark theme) exports
+- **Report Index**: statistics, top 10, quick wins, research opportunities
+- **CLI group**: `ghostmirror bounty report|submissions|export-hackerone|export-bugcrowd`
+- **Report integration**: Bug Bounty Submissions section in HTML and Markdown reports
+- **Documentation**: `docs/HACKERONE_STYLE_REPORTING.md`
+- **96 unit tests** covering all modules with edge cases
+- Updated README, CHANGELOG, USAGE, SPRINTS, ROADMAP
+
 - New `ZeroDayEngine` orchestrating 14-module hypothesis generation pipeline
 - **Anomaly Engine**: detect unexpected status codes, rare headers, size inconsistencies, exposed objects, rare endpoints (admin, debug, swagger, .git, .env)
 - **Differential Engine**: compare safe endpoint variants for divergent status/size/content-type behavior

@@ -64,7 +64,15 @@
 - Pipeline integration (standard, deep, bounty profiles)
 - Documentation: `docs/ZERO_DAY_HYPOTHESIS_ENGINE.md`
 
-### Sprint 17 — Dashboard *(planned)*
+
+### Sprint 17 — HackerOne Style Reporting ✅
+- Bug bounty and pentest submission reporting in HackerOne/Bugcrowd format
+- 14-module pipeline consuming findings, hypotheses, and intelligence
+- Safe reproduction steps, evidence redaction, professional impact descriptions
+- CLI: `ghostmirror bounty report|submissions|export-hackerone|export-bugcrowd`
+- 96 unit tests, full docs
+- Documentation: `docs/HACKERONE_STYLE_REPORTING.md`
+
 - Web-based dashboard for real-time scan monitoring
 - Historical trend analysis and visual reports
 - Team collaboration features

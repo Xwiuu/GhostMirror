@@ -331,6 +331,39 @@ def _action_create_menu(ctx: AppContext) -> None:
         handle_error(exc)
 
 
+
+def _action_bounty_report_menu(ctx: AppContext) -> None:
+    """Bug bounty report generator menu action."""
+    handles = ctx.projects.list_projects()
+    if not handles:
+        console.print("[yellow]Nenhum projeto encontrado. Crie um primeiro.[/]")
+        return
+
+    _render_projects_table(handles)
+    slug = Prompt.ask("Slug do projeto").strip()
+    try:
+        handle = ctx.projects.open_project(slug)
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        return
+
+    from ghostmirror.modules.reporting.collector import ReportCollector
+    from ghostmirror.modules.hackerone_reporting.engine import HackerOneReportingEngine
+
+    collector = ReportCollector(handle.path)
+    data = collector.collect()
+    engine = HackerOneReportingEngine(handle.path)
+    try:
+        with console.status("[bold green]Gerando bug bounty report..."):
+            report = engine.analyze_project(data)
+        console.print(f"[bold green]Bug bounty report gerado com sucesso![/]")
+        console.print(f"Total de submissions: [cyan]{len(report.submissions)}[/]")
+        console.print(f"Critical: [bold red]{report.summary_stats.get('critical', 0)}[/] | "
+                      f"High: [bold orange1]{report.summary_stats.get('high', 0)}[/] | "
+                      f"Medium: [bold yellow]{report.summary_stats.get('medium', 0)}[/]")
+        console.print(f"Reports salvos em: [green]reports/bounty/[/]")
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao gerar bug bounty report:[/] {exc}")
 def _action_quick_scan(ctx: AppContext) -> None:
     """Quick scan flow — just ask for a URL, run a quick scan."""
     from datetime import datetime
@@ -521,7 +554,7 @@ def _menu_system(ctx: AppContext) -> None:
         try:
             choice = Prompt.ask(
                 "\nEscolha uma opção",
-                choices=["0", "1", "2", "3", "4", "5", "6"],
+                choices=["0", "1", "2", "3", "4", "5", "6", "7"],
                 default="0",
                 show_choices=False,
             )
@@ -614,7 +647,7 @@ def interactive_menu(ctx: AppContext) -> None:
         try:
             choice = Prompt.ask(
                 "\nEscolha uma opção",
-                choices=["0", "1", "2", "3", "4", "5", "6"],
+                choices=["0", "1", "2", "3", "4", "5", "6", "7"],
                 default="0",
                 show_choices=False,
             )
@@ -688,6 +721,9 @@ def interactive_menu(ctx: AppContext) -> None:
 
         elif choice == "6":
             _menu_system(ctx)
+
+        elif choice == "7":
+            _action_bounty_report_menu(ctx)
 
 
 # --------------------------------------------------------------------------- #
@@ -1051,6 +1087,175 @@ def cmd_report_generate(
     except Exception as exc:
         console.print(f"[bold red]Erro ao gerar relatório:[/] {exc}")
         raise typer.Exit(code=1)
+
+
+# --------------------------------------------------------------------------- #
+# Bug Bounty / HackerOne Reporting
+# --------------------------------------------------------------------------- #
+bounty_app = typer.Typer(help="Gera relatórios no estilo HackerOne para bug bounty e pentest submissions.")
+app.add_typer(bounty_app, name="bounty")
+
+
+@bounty_app.command("report", help="Gera relatório completo de bug bounty submissions.")
+def cmd_bounty_report(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.reporting.collector import ReportCollector
+    from ghostmirror.modules.hackerone_reporting.engine import HackerOneReportingEngine
+
+    collector = ReportCollector(handle.path)
+    data = collector.collect()
+    engine = HackerOneReportingEngine(handle.path)
+    try:
+        with console.status("[bold green]Gerando bug bounty report..."):
+            report = engine.analyze_project(data)
+        console.print("[bold green]Bug bounty report gerado com sucesso![/]")
+        console.print(f"Total de submissions: [cyan]{len(report.submissions)}[/]")
+        console.print(f"Severidades: Critical [bold red]{report.summary_stats.get('critical', 0)}[/] | "
+                      f"High [bold orange1]{report.summary_stats.get('high', 0)}[/] | "
+                      f"Medium [bold yellow]{report.summary_stats.get('medium', 0)}[/]")
+        console.print(f"Report salvos em: [green]reports/bounty/[/]")
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao gerar bug bounty report:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
+@bounty_app.command("submissions", help="Lista as submissions geradas.")
+def cmd_bounty_submissions(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.reporting.collector import ReportCollector
+    from ghostmirror.modules.hackerone_reporting.engine import HackerOneReportingEngine
+
+    collector = ReportCollector(handle.path)
+    data = collector.collect()
+    engine = HackerOneReportingEngine(handle.path)
+    report = engine.analyze_project(data)
+
+    console.print(f"[bold]Submissions ({len(report.submissions)}):[/]")
+    for i, sub in enumerate(report.submissions, 1):
+        sev_color = {"Critical": "red", "High": "orange1", "Medium": "yellow", "Low": "cyan", "Informational": "dim"}
+        color = sev_color.get(sub.severity.value, "white")
+        console.print(f"  {i}. [{color}]{sub.severity.value}[/] — {sub.title}")
+        console.print(f"     Asset: {sub.affected_asset} | Confidence: {sub.confidence}")
+
+
+@bounty_app.command("export-hackerone", help="Exporta uma submission no formato HackerOne.")
+def cmd_bounty_export_hackerone(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+    index: int = typer.Option(1, "--index", "-i", help="Índice da submission (1-based)"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.reporting.collector import ReportCollector
+    from ghostmirror.modules.hackerone_reporting.engine import HackerOneReportingEngine
+    from ghostmirror.modules.hackerone_reporting.markdown_exporter import MarkdownExporter
+
+    collector = ReportCollector(handle.path)
+    data = collector.collect()
+    engine = HackerOneReportingEngine(handle.path)
+    report = engine.analyze_project(data)
+
+    if index < 1 or index > len(report.submissions):
+        console.print(f"[bold red]Índice inválido. Use 1-{len(report.submissions)}[/]")
+        raise typer.Exit(code=1)
+
+    sub = report.submissions[index - 1]
+    exporter = MarkdownExporter()
+    output_path = f"reports/bounty/submissions/H1-{index:03d}-hackerone.md"
+    exporter.export_submission_hackerone(sub, output_path)
+    console.print(f"[green]Submission exportada:[/] {output_path}")
+
+
+@bounty_app.command("export-bugcrowd", help="Exporta uma submission no formato Bugcrowd.")
+def cmd_bounty_export_bugcrowd(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+    index: int = typer.Option(1, "--index", "-i", help="Índice da submission (1-based)"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.reporting.collector import ReportCollector
+    from ghostmirror.modules.hackerone_reporting.engine import HackerOneReportingEngine
+    from ghostmirror.modules.hackerone_reporting.markdown_exporter import MarkdownExporter
+
+    collector = ReportCollector(handle.path)
+    data = collector.collect()
+    engine = HackerOneReportingEngine(handle.path)
+    report = engine.analyze_project(data)
+
+    if index < 1 or index > len(report.submissions):
+        console.print(f"[bold red]Índice inválido. Use 1-{len(report.submissions)}[/]")
+        raise typer.Exit(code=1)
+
+    sub = report.submissions[index - 1]
+    exporter = MarkdownExporter()
+    output_path = f"reports/bounty/submissions/BC-{index:03d}-bugcrowd.md"
+    exporter.export_submission_bugcrowd(sub, output_path)
+    console.print(f"[green]Submission exportada:[/] {output_path}")
 
 
 # --------------------------------------------------------------------------- #

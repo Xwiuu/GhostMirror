@@ -161,6 +161,30 @@ This installs the `ghostmirror` console command.
 
 ---
 
+
+## 🔍 HackerOne / Bug Bounty Reporting
+
+GhostMirror gera relatórios profissionais no estilo HackerOne e Bugcrowd para programas de bug bounty e testes de penetração.
+
+```bash
+# Gerar relatório completo de bug bounty submissions
+ghostmirror bounty report --project <slug>
+
+# Listar submissions geradas
+ghostmirror bounty submissions --project <slug>
+
+# Exportar submission individual no formato HackerOne
+ghostmirror bounty export-hackerone --project <slug> --index 1
+
+# Exportar submission individual no formato Bugcrowd
+ghostmirror bounty export-bugcrowd --project <slug> --index 1
+```
+
+Os relatórios são salvos em `reports/bounty/` com submissions individuais, estatísticas e índices.
+
+> ⚠️ Use only on targets you own or are explicitly authorized to test.
+> Reports may require manual validation before submission.
+
 ## 🐳 Docker
 
 ```bash

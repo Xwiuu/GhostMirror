@@ -1221,6 +1221,52 @@ class HTMLReportRenderer:
             html_template += '<p><em>Bug Bounty data not available. Run <code>ghostmirror bounty scan</code> to generate.</em></p>'
             html_template += '</div>'
 
+        # HACKERONE STYLE BOUNTY SUBMISSIONS
+        bounty_data = collected_data.get("profiles", {}).get("bounty_report") or {}
+        bounty_submissions = collected_data.get("bounty_submissions") or []
+        if bounty_data:
+            html_template += '<div class="section" id="bounty-submissions">'
+            html_template += '<h2 class="section-title">Bug Bounty Submissions</h2>'
+            html_template += '<p>Vulnerability submissions formatted for HackerOne, Bugcrowd, and Internal Pentest templates.</p>'
+            # Summary stats
+            stats = bounty_data.get("summary_stats", {})
+            html_template += '<div class="dashboard-grid" style="grid-template-columns: repeat(5, 1fr);">'
+            for sev in ["critical", "high", "medium", "low", "informational"]:
+                count = stats.get(sev, 0)
+                color = {"critical": "var(--critical)","high":"var(--high)","medium":"var(--medium)","low":"var(--low)","informational":"var(--info)"}.get(sev,"var(--text-muted)")
+                html_template += f'<div class="card"><div style="font-size:2rem;font-weight:bold;color:{color}">{count}</div><div style="color:var(--text-muted)">{sev.title()}</div></div>'
+            html_template += '</div>'
+            # Top 10
+            top10 = bounty_data.get("top_10", [])
+            if top10:
+                html_template += '<h4>Top 10 Submissions</h4><table class="data-table"><tr><th>#</th><th>Title</th><th>Severity</th><th>Template</th></tr>'
+                for i, item in enumerate(top10[:10], 1):
+                    title = item.get("title", "N/A")
+                    sev = item.get("severity", "INFO").lower()
+                    tmpl = item.get("template", "N/A")
+                    html_template += f'<tr><td>{i}</td><td>{title}</td><td><span class="severity-badge severity-{sev}">{sev.upper()}</span></td><td>{tmpl}</td></tr>'
+                html_template += '</table>'
+            # Quick wins
+            quick_wins = bounty_data.get("quick_wins", [])
+            if quick_wins:
+                html_template += '<h4>Quick Wins</h4><ul>'
+                for qw in quick_wins:
+                    html_template += f'<li>{qw}</li>'
+                html_template += '</ul>'
+            # Research targets
+            research = bounty_data.get("research_targets", [])
+            if research:
+                html_template += '<h4>Research Opportunities</h4><ul>'
+                for r in research:
+                    html_template += f'<li>{r}</li>'
+                html_template += '</ul>'
+            html_template += '<h4>Output Reports</h4><ul>'
+            html_template += '<li>reports/bounty/bounty_report.md</li>'
+            html_template += '<li>reports/bounty/bounty_report.json</li>'
+            html_template += '<li>reports/bounty/bounty_report.html</li>'
+            html_template += '<li>reports/bounty/submissions/*.md (individual submissions)</li>'
+            html_template += '</ul></div>'
+
         html_template += """
         <!-- INTELLIGENCE ANALYSIS -->
         <h3 class="section-title">9. Attack Surface Intelligence</h3>

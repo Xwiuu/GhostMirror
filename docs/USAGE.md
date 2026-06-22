@@ -63,6 +63,52 @@ ghostmirror report generate --project <slug> --format markdown
 ghostmirror report generate --project <slug> --format pdf
 ```
 
+
+## Bug Bounty / HackerOne Reporting
+
+GhostMirror gera relatórios de bug bounty no formato HackerOne e Bugcrowd.
+
+### Generate bounty report
+
+```bash
+ghostmirror bounty report --project <slug>
+```
+
+### List submissions
+
+```bash
+ghostmirror bounty submissions --project <slug>
+```
+
+### Export individual submission
+
+```bash
+# HackerOne format
+ghostmirror bounty export-hackerone --project <slug> --index 1
+
+# Bugcrowd format
+ghostmirror bounty export-bugcrowd --project <slug> --index 1
+```
+
+### Output
+
+Reports are saved to `reports/bounty/`:
+
+```
+reports/bounty/
+├── bounty_report.json       # Complete report (JSON)
+├── bounty_report.md         # Report (Markdown)
+├── bounty_report.html       # Report (HTML, dark theme)
+├── submissions/
+│   ├── H1-001-*.md          # Individual HackerOne submissions
+│   └── ...
+└── index.json               # Statistics and priorities
+```
+
+See [HACKERONE_STYLE_REPORTING.md](HACKERONE_STYLE_REPORTING.md) for full documentation.
+
+> ⚠️ **Warning**: Use only on authorized targets. Manual validation required before submission.
+
 ## Interactive Mode
 
 ```bash

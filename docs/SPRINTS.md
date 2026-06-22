@@ -198,3 +198,20 @@
 - Pipeline integration: zero_day step in standard, deep, and bounty profiles, dependency on web_intelligence + api_security
 - Report integration: Zero-Day Hypothesis Intelligence section in collector
 - Documentation: `docs/ZERO_DAY_HYPOTHESIS_ENGINE.md`
+
+## Sprint 17 — HackerOne Style Reporting
+- New `HackerOneReportingEngine` orchestrating 14-module bounty submission pipeline
+- 5 Pydantic models: BountySubmission, BountyReport, ReproductionStep, EvidenceBlock, BountySeverity/BountyPriority
+- Submission Builder consuming 5 intelligence sources
+- Safe, non-destructive reproduction steps for 15+ finding categories
+- Automatic evidence redaction (tokens, secrets, API keys, JWTs, cookies)
+- Professional impact descriptions (business + technical)
+- Specific remediation recommendations per vulnerability category
+- References mapping (OWASP, CWE, PortSwigger, MITRE, NIST)
+- Template Renderer: HackerOne, Bugcrowd, Internal Pentest
+- Exporters: Markdown, JSON, HTML (dark theme)
+- Report Index with statistics, top 10, quick wins, research opportunities
+- CLI group: `ghostmirror bounty report|submissions|export-hackerone|export-bugcrowd`
+- Report integration: Bug Bounty Submissions section in main reports
+- Documentation: `docs/HACKERONE_STYLE_REPORTING.md`
+- 96 unit tests covering all modules
