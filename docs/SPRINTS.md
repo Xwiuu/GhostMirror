@@ -181,3 +181,20 @@
 - **Report integration**: API Security Intelligence section in HTML and Markdown reports
 - Documentation: `docs/API_SECURITY_INTELLIGENCE.md`
 - Updated README, CHANGELOG, USAGE, SPRINTS, ROADMAP
+
+## Sprint 16 — Zero-Day Hypothesis Engine
+- Full hypothesis generation pipeline with 14 modules orchestrated by `ZeroDayEngine`
+- **Anomaly Engine**: detect unexpected status codes, rare headers, size inconsistencies (statistical outlier detection), 30+ rare endpoint patterns (admin, debug, swagger, .git, .env, actuator), sensitive header exposure
+- **Differential Engine**: group endpoints by base path, compare status/size/content-type across safe variants (/resource vs /resource/ vs /resource?id=1), detect divergent behavior without fuzzing or brute force
+- **Hidden Functionality Engine**: scan JS intelligence, source maps, bundles for 30+ feature flag patterns (isAdmin, debugMode, featureFlag), 25+ debug route patterns (/actuator, /heapdump, /__webpack_hmr), internal functions (_private, _internal), exposed source maps with route extraction
+- **Business Logic Engine**: map 8 business flow categories (checkout, coupon/discount, wallet/balance, transfer, subscription, invoice, auth/security, admin), detect financial parameters in requests, identify multi-step complex flows
+- **Attack Chain Engine**: 6 correlation chains — JWT+Admin+Objects, GraphQL+Introspection, SourceMaps+Routes, JWT+GraphQL, Admin+SensitiveObjects, API Object Relationships
+- **Confidence Engine**: 4-level confidence (LOW/MEDIUM/HIGH/VERY_HIGH), signal quality scoring (10-45 per type), source diversity analysis, cross-module correlation evaluation
+- **Hypothesis Builder**: generate structured hypotheses from attack chains, anomalies, opportunities; build cross-cutting hypotheses from signal concentration; detect hypothesis type from components
+- **Research Queue**: merge hypotheses + opportunities + attack chains, sort by priority/confidence/score, generate prioritized research queue
+- **Scoring**: composite 0-100 (25% anomaly + 25% attack chain + 20% hypothesis + 15% business logic + 10% exposure + 5% API/web), classify LOW/MEDIUM/HIGH/CRITICAL
+- 7 Pydantic models: AnomalySignal, Anomaly, AnomalyProfile, AttackChain, ResearchOpportunity, ZeroDayHypothesis, HypothesisReport
+- CLI group: `ghostmirror zero-day run|anomalies|attack-chains|hypotheses|research` + `ghostmirror analyze zero-day`
+- Pipeline integration: zero_day step in standard, deep, and bounty profiles, dependency on web_intelligence + api_security
+- Report integration: Zero-Day Hypothesis Intelligence section in collector
+- Documentation: `docs/ZERO_DAY_HYPOTHESIS_ENGINE.md`

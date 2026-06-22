@@ -230,6 +230,25 @@ class ReportCollector:
                 "api_recommendations": self._load_json_list(
                     self.profiles_dir / "api_security" / "api_recommendations.json"
                 ),
+                # Zero-Day Hypothesis Engine
+                "zero_day_report": self._load_json_dict(
+                    self.profiles_dir / "zero_day" / "zero_day_report.json"
+                ),
+                "zero_day_anomalies": self._load_json_list(
+                    self.profiles_dir / "zero_day" / "anomalies.json"
+                ),
+                "zero_day_attack_chains": self._load_json_list(
+                    self.profiles_dir / "zero_day" / "attack_chains.json"
+                ),
+                "zero_day_hypotheses": self._load_json_list(
+                    self.profiles_dir / "zero_day" / "hypotheses.json"
+                ),
+                "zero_day_opportunities": self._load_json_list(
+                    self.profiles_dir / "zero_day" / "business_logic_opportunities.json"
+                ),
+                "zero_day_research_queue": self._load_json_list(
+                    self.profiles_dir / "zero_day" / "research_queue.json"
+                ),
             },
         }
 

@@ -4,6 +4,24 @@ All notable changes to GhostMirror are documented here.
 
 ## v1.0-alpha — 2026-06-22
 
+### Zero-Day Hypothesis Engine (Sprint 16)
+- New `ZeroDayEngine` orchestrating 14-module hypothesis generation pipeline
+- **Anomaly Engine**: detect unexpected status codes, rare headers, size inconsistencies, exposed objects, rare endpoints (admin, debug, swagger, .git, .env)
+- **Differential Engine**: compare safe endpoint variants for divergent status/size/content-type behavior
+- **Hidden Functionality Engine**: scan JS, source maps, and bundles for feature flags (isAdmin, debugMode), debug routes (/actuator, /heapdump), internal functions (_private, _admin)
+- **Business Logic Engine**: map checkout, coupon, wallet, transfer, subscription, invoice, and auth flows; detect financial parameters and multi-step flows
+- **Attack Chain Engine**: correlate JWT + Admin + Objects, GraphQL + Introspection, Source Maps + Internal Routes into attack chains
+- **Confidence Engine**: 4-level confidence (LOW/MEDIUM/HIGH/VERY_HIGH) based on signal quantity, quality, source diversity, and correlation
+- **Hypothesis Builder**: generate structured hypotheses with title, confidence, signals, reasoning, attack scenario, and recommendations
+- **Research Queue**: prioritize all hypotheses/opportunities/chains by priority, confidence, and score
+- **Scoring**: composite 0-100 score (25% anomaly + 25% attack chain + 20% hypothesis + 15% business logic + 10% exposure + 5% API/web)
+- 7 Pydantic models: AnomalySignal, Anomaly, AnomalyProfile, AttackChain, ResearchOpportunity, ZeroDayHypothesis, HypothesisReport
+- CLI group: `ghostmirror zero-day run|anomalies|attack-chains|hypotheses|research` + `ghostmirror analyze zero-day`
+- Pipeline integration: zero_day step in standard, deep, and bounty profiles
+- Report integration: Zero-Day Hypothesis Intelligence collected in report collector
+- Documentation: `docs/ZERO_DAY_HYPOTHESIS_ENGINE.md`
+- Updated README, CHANGELOG, USAGE, SPRINTS, ROADMAP
+
 ### API Security Intelligence (Sprint 15)
 - New `APISecurityEngine` orchestrating 21-module API intelligence pipeline
 - **API Inventory**: multi-source consolidation (web intel, bug bounty, JS, network, endpoint mapper)

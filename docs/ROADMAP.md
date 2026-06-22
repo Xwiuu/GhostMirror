@@ -55,7 +55,16 @@
 - Report integration (HTML/Markdown)
 - Pipeline integration (standard, deep, bounty profiles)
 
-### Sprint 16 — Dashboard *(planned)*
+### Sprint 16 — Zero-Day Hypothesis Engine ✅
+- 14-module hypothesis generation pipeline
+- Anomaly detection, differential analysis, hidden functionality discovery
+- Business logic mapping, attack chain correlation
+- Confidence engine, hypothesis builder, research queue, composite scoring
+- CLI: `ghostmirror zero-day run|anomalies|attack-chains|hypotheses|research`
+- Pipeline integration (standard, deep, bounty profiles)
+- Documentation: `docs/ZERO_DAY_HYPOTHESIS_ENGINE.md`
+
+### Sprint 17 — Dashboard *(planned)*
 - Web-based dashboard for real-time scan monitoring
 - Historical trend analysis and visual reports
 - Team collaboration features

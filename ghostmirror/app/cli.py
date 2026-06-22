@@ -3996,6 +3996,321 @@ def cmd_bounty_report(
 
 
 # --------------------------------------------------------------------------- #
+# Zero-Day Hypothesis Engine sub-app
+# --------------------------------------------------------------------------- #
+zeroday_app = typer.Typer(help="Zero-Day Hypothesis Engine: detecta anomalias, gera hipóteses de vulnerabilidades e prioriza pesquisa.")
+app.add_typer(zeroday_app, name="zero-day")
+
+
+@zeroday_app.command("run", help="Executa o Zero-Day Hypothesis Engine completo.")
+def cmd_zeroday_run(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.zero_day.engine import ZeroDayEngine
+
+    engine = ZeroDayEngine()
+    try:
+        with console.status("[bold green]Executando Zero-Day Hypothesis Engine..."):
+            report = engine.analyze_project(handle.path)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante Zero-Day Engine:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("[bold cyan]ZERO-DAY HYPOTHESIS ENGINE — COMPLETE[/]\n")
+
+    score_color = "red" if report.risk_level in ("CRITICAL", "HIGH") else "yellow" if report.risk_level == "MEDIUM" else "green"
+    console.print(f"Overall Score: [{score_color}]{report.overall_score}/100 ({report.risk_level})[/]")
+    console.print(f"Total Signals: [bold]{report.total_signals}[/]")
+    console.print(f"Total Hypotheses: [bold]{report.total_hypotheses}[/]")
+    console.print(f"Total Opportunities: [bold]{report.total_opportunities}[/]")
+    console.print(f"Total Attack Chains: [bold]{report.total_attack_chains}[/]")
+    console.print(f"Research Queue Size: [bold]{len(report.research_queue)}[/]")
+
+    if report.hypotheses:
+        console.print("\n[bold]Top Hypotheses:[/]")
+        for h in report.hypotheses[:5]:
+            conf_color = "green" if h.get("confidence") == "VERY_HIGH" else "cyan" if h.get("confidence") == "HIGH" else "yellow"
+            console.print(f"  [{conf_color}][{h.get('confidence')}][/] {h.get('title', '')}")
+
+    if report.attack_chains:
+        console.print("\n[bold]Attack Chains:[/]")
+        for ac in report.attack_chains:
+            console.print(f"  • {ac.get('title', '')}")
+
+    console.print(f"\nReport saved to: [dim]{handle.path / 'profiles' / 'zero_day' / 'zero_day_report.json'}[/]")
+    console.print("---")
+
+
+@zeroday_app.command("anomalies", help="Exibe anomalias detectadas no projeto.")
+def cmd_zeroday_anomalies(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    import json
+    report_path = handle.path / "profiles" / "zero_day" / "anomalies.json"
+    if not report_path.exists():
+        console.print("[yellow]Execute 'ghostmirror zero-day run' primeiro.[/]")
+        raise typer.Exit(code=1)
+    with open(report_path, "r", encoding="utf-8") as f:
+        anomalies = json.load(f)
+
+    if not anomalies:
+        console.print("[green]Nenhuma anomalia detectada.[/]")
+        return
+
+    table = Table(box=box.ROUNDED, header_style="bold cyan", title="Anomalies")
+    table.add_column("Severity")
+    table.add_column("Confidence")
+    table.add_column("Title")
+    table.add_column("Endpoint")
+    for a in anomalies:
+        sev = a.get("severity", "LOW")
+        sev_color = "red" if sev == "CRITICAL" else "orange1" if sev == "HIGH" else "yellow"
+        conf_color = "green" if a.get("confidence") == "HIGH" else "cyan"
+        table.add_row(
+            f"[{sev_color}]{sev}[/]",
+            f"[{conf_color}]{a.get('confidence', 'LOW')}[/]",
+            a.get("title", "")[:60],
+            a.get("endpoint", "")[:40],
+        )
+    console.print(table)
+    console.print(f"\nTotal: [bold]{len(anomalies)}[/] anomalies")
+
+
+@zeroday_app.command("attack-chains", help="Exibe attack chains do projeto.")
+def cmd_zeroday_attack_chains(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    import json
+    chains_path = handle.path / "profiles" / "zero_day" / "attack_chains.json"
+    if not chains_path.exists():
+        console.print("[yellow]Execute 'ghostmirror zero-day run' primeiro.[/]")
+        raise typer.Exit(code=1)
+    with open(chains_path, "r", encoding="utf-8") as f:
+        chains = json.load(f)
+
+    if not chains:
+        console.print("[green]Nenhum attack chain detectado.[/]")
+        return
+
+    for i, c in enumerate(chains, 1):
+        sev = c.get("severity", "LOW")
+        sev_color = "red" if sev == "CRITICAL" else "orange1" if sev == "HIGH" else "yellow"
+        console.print(f"\n[bold]#{i}[/] [{sev_color}][{sev}][/] {c.get('title', '')}")
+        console.print(f"  Confidence: {c.get('confidence', 'LOW')} | Score: {c.get('score', 0)}")
+        console.print(f"  {c.get('description', '')}")
+        if c.get("components"):
+            console.print(f"  Components: {', '.join(c['components'])}")
+        if c.get("recommendation"):
+            console.print(f"  → {c['recommendation']}")
+
+
+@zeroday_app.command("hypotheses", help="Exibe hipóteses de vulnerabilidade geradas.")
+def cmd_zeroday_hypotheses(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    import json
+    hyp_path = handle.path / "profiles" / "zero_day" / "hypotheses.json"
+    if not hyp_path.exists():
+        console.print("[yellow]Execute 'ghostmirror zero-day run' primeiro.[/]")
+        raise typer.Exit(code=1)
+    with open(hyp_path, "r", encoding="utf-8") as f:
+        hypotheses = json.load(f)
+
+    if not hypotheses:
+        console.print("[green]Nenhuma hipótese gerada.[/]")
+        return
+
+    for i, h in enumerate(hypotheses, 1):
+        conf = h.get("confidence", "LOW")
+        conf_color = "green" if conf == "VERY_HIGH" else "cyan" if conf == "HIGH" else "yellow"
+        imp = h.get("impact", "LOW")
+        imp_color = "red" if imp == "CRITICAL" else "orange1" if imp == "HIGH" else "yellow"
+        console.print(f"\n[bold]#{i}[/] {h.get('title', '')}")
+        console.print(f"  Confidence: [{conf_color}]{conf}[/] | Impact: [{imp_color}]{imp}[/] | Score: {h.get('score', 0)}")
+        console.print(f"  Type: {h.get('hypothesis_type', '')}")
+        if h.get("reasoning"):
+            console.print(f"  {h['reasoning'][:200]}")
+        if h.get("recommendation"):
+            console.print(f"  → {h['recommendation']}")
+
+
+@zeroday_app.command("research", help="Exibe a fila de pesquisa priorizada.")
+def cmd_zeroday_research(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    import json
+    queue_path = handle.path / "profiles" / "zero_day" / "research_queue.json"
+    if not queue_path.exists():
+        console.print("[yellow]Execute 'ghostmirror zero-day run' primeiro.[/]")
+        raise typer.Exit(code=1)
+    with open(queue_path, "r", encoding="utf-8") as f:
+        queue = json.load(f)
+
+    if not queue:
+        console.print("[green]Fila de pesquisa vazia.[/]")
+        return
+
+    table = Table(box=box.ROUNDED, header_style="bold cyan", title="Research Queue")
+    table.add_column("#")
+    table.add_column("Type")
+    table.add_column("Priority")
+    table.add_column("Confidence")
+    table.add_column("Title")
+    for i, item in enumerate(queue, 1):
+        prio = item.get("priority", "LOW")
+        prio_color = "red" if prio == "CRITICAL" else "orange1" if prio == "HIGH" else "yellow"
+        conf_color = "green" if item.get("confidence") == "VERY_HIGH" else "cyan" if item.get("confidence") == "HIGH" else "yellow"
+        table.add_row(
+            str(i),
+            item.get("type", ""),
+            f"[{prio_color}]{prio}[/]",
+            f"[{conf_color}]{item.get('confidence', 'LOW')}[/]",
+            item.get("title", "")[:70],
+        )
+    console.print(table)
+    console.print(f"\nTotal: [bold]{len(queue)}[/] research items")
+
+
+# --------------------------------------------------------------------------- #
+# Add analyze zero-day command
+# --------------------------------------------------------------------------- #
+@analyze_app.command("zero-day", help="Zero-Day Hypothesis Engine — gera hipóteses e anomalias.")
+def cmd_analyze_zeroday(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Executa o Zero-Day Hypothesis Engine no projeto."""
+    from ghostmirror.modules.zero_day.engine import ZeroDayEngine
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    engine = ZeroDayEngine()
+    try:
+        with console.status("[bold green]Executando Zero-Day Hypothesis Engine..."):
+            report = engine.analyze_project(handle.path)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante Zero-Day Engine:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("ZERO-DAY HYPOTHESIS ENGINE — COMPLETE\n")
+    score_color = "red" if report.risk_level in ("CRITICAL", "HIGH") else "yellow" if report.risk_level == "MEDIUM" else "green"
+    console.print(f"Overall Score: [{score_color}]{report.overall_score}/100 ({report.risk_level})[/]")
+    console.print(f"Signals: [bold]{report.total_signals}[/] | Hypotheses: [bold]{report.total_hypotheses}[/] | Opportunities: [bold]{report.total_opportunities}[/] | Attack Chains: [bold]{report.total_attack_chains}[/]")
+    console.print(f"Research Queue: [bold]{len(report.research_queue)}[/] items")
+    console.print("---")
+
+
+# --------------------------------------------------------------------------- #
 # Add analyze findings command
 # --------------------------------------------------------------------------- #
 @analyze_app.command("findings", help="Finding Intelligence Engine - enriquece todos os findings do projeto.")
