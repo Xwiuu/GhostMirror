@@ -184,6 +184,52 @@ class ReportCollector:
                 "bug_bounty_interesting_files": self._load_json_list(
                     self.profiles_dir / "bug_bounty" / "interesting_files.json"
                 ),
+                # API Security Intelligence
+                "api_security_report": self._load_json_dict(
+                    self.profiles_dir / "api_security" / "api_security_report.json"
+                ),
+                "api_inventory": self._load_json_dict(
+                    self.profiles_dir / "api_security" / "api_inventory.json"
+                ),
+                "swagger_profile": self._load_json_dict(
+                    self.profiles_dir / "api_security" / "swagger_profile.json"
+                ),
+                "graphql_profile": self._load_json_dict(
+                    self.profiles_dir / "api_security" / "graphql_profile.json"
+                ),
+                "jwt_profile": self._load_json_dict(
+                    self.profiles_dir / "api_security" / "jwt_profile.json"
+                ),
+                "oauth_profile": self._load_json_dict(
+                    self.profiles_dir / "api_security" / "oauth_profile.json"
+                ),
+                "object_inventory": self._load_json_list(
+                    self.profiles_dir / "api_security" / "object_inventory.json"
+                ),
+                "rate_limit_profile": self._load_json_dict(
+                    self.profiles_dir / "api_security" / "rate_limit_profile.json"
+                ),
+                "api_attack_surface": self._load_json_dict(
+                    self.profiles_dir / "api_security" / "api_attack_surface.json"
+                ),
+                "api_bola_indicators": self._load_json_list(
+                    self.profiles_dir / "api_security" / "bola_indicators.json"
+                ),
+                "api_bfla_indicators": self._load_json_list(
+                    self.profiles_dir / "api_security" / "bfla_indicators.json"
+                ),
+                "api_mass_assignment_indicators": self._load_json_list(
+                    self.profiles_dir / "api_security" / "mass_assignment_indicators.json"
+                ),
+                "api_correlations": self._load_json_list(
+                    self.profiles_dir / "api_security" / "api_correlations.json"
+                ),
+                "api_opportunities": self._load_json_list(
+                    self.profiles_dir / "api_security" / "api_opportunities.json"
+                ),
+                "api_recommendations": self._load_json_list(
+                    self.profiles_dir / "api_security" / "api_recommendations.json"
+                ),
             },
         }
 

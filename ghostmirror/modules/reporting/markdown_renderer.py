@@ -689,9 +689,115 @@ A validação de payloads seguros registrou **{pp_total}** payloads, dos quais *
         else:
             md += "*Pentest recommendations not available. Run `ghostmirror intelligence` to generate.*\n\n"
 
-        # 15. Next steps
+        # 15. API Security Intelligence
+        api_report = collected_data["profiles"].get("api_security_report") or {}
+        api_inv = collected_data["profiles"].get("api_inventory") or {}
+        api_swagger = collected_data["profiles"].get("swagger_profile") or {}
+        api_graphql = collected_data["profiles"].get("graphql_profile") or {}
+        api_jwt = collected_data["profiles"].get("jwt_profile") or {}
+        api_oauth = collected_data["profiles"].get("oauth_profile") or {}
+        api_objects = collected_data["profiles"].get("object_inventory") or []
+        api_rl = collected_data["profiles"].get("rate_limit_profile") or {}
+        api_surface = collected_data["profiles"].get("api_attack_surface") or {}
+        api_bolas = collected_data["profiles"].get("api_bola_indicators") or []
+        api_bflas = collected_data["profiles"].get("api_bfla_indicators") or []
+        api_mass = collected_data["profiles"].get("api_mass_assignment_indicators") or []
+        api_opps = collected_data["profiles"].get("api_opportunities") or []
+        api_corrs = collected_data["profiles"].get("api_correlations") or []
+        api_recs = collected_data["profiles"].get("api_recommendations") or []
+
+        if api_report:
+            md += """
+---
+
+## 15. API SECURITY INTELLIGENCE
+
+A API Security Intelligence Engine realizou uma análise passiva da superfície de APIs, identificando endpoints, tecnologias de autenticação, objetos sensíveis e oportunidades de ataque — sem exploração destrutiva.
+
+### API Inventory Overview
+
+| Métrica | Valor |
+| :--- | :--- |
+"""
+            md += f"| **Total Endpoints** | {api_inv.get('total_endpoints', 0)} |\n"
+            md += f"| **Auth Required** | {api_inv.get('auth_required_count', 0)} |\n"
+            md += f"| **Methods** | {', '.join(api_inv.get('total_methods', {}).keys())} |\n"
+            md += f"| **Sources** | {', '.join(api_inv.get('total_sources', {}).keys())} |\n\n"
+
+            if api_swagger.get("detected"):
+                md += f"**Swagger/OpenAPI:** Detected at {', '.join(api_swagger.get('found_paths', []))}\n\n"
+
+            if api_graphql.get("detected"):
+                md += f"**GraphQL:** Detected at {', '.join(api_graphql.get('endpoints', []))}\n"
+                gql_intel = api_graphql.get("intelligence", {})
+                if gql_intel:
+                    md += f"- Introspection: {'Yes' if gql_intel.get('has_introspection') else 'No'}\n"
+                    md += f"- Playground: {'Yes' if gql_intel.get('has_playground') else 'No'}\n"
+                    md += f"- Exposure Level: {gql_intel.get('exposure_level', 'LOW')}\n\n"
+
+            if api_jwt.get("detected"):
+                md += f"**JWT:** Detected ({api_jwt.get('total_tokens_found', 0)} tokens)\n"
+                if api_jwt.get("has_none_alg_indicator"):
+                    md += "- ⚠ **'none' algorithm detected**\n"
+                if not api_jwt.get("has_exp"):
+                    md += "- ⚠ **Missing expiration claim**\n"
+                md += "\n"
+
+            if api_oauth.get("detected"):
+                md += f"**OAuth/OIDC:** Detected — Providers: {', '.join(api_oauth.get('providers', []))}\n\n"
+
+            if api_objects:
+                md += "### Object Mapping\n\n| Type | Count |\n| :--- | :--- |\n"
+                obj_counts: dict[str, int] = {}
+                for o in api_objects:
+                    obj_counts[o.get("type", "Unknown")] = obj_counts.get(o.get("type", "Unknown"), 0) + 1
+                for otype, count in sorted(obj_counts.items(), key=lambda x: -x[1]):
+                    md += f"| **{otype}** | {count} |\n"
+                md += "\n"
+
+            if api_rl:
+                md += f"**Rate Limiting:** {api_rl.get('classification', 'Unknown')}\n\n"
+
+            if api_surface:
+                score = api_surface.get("exposure_score", 0)
+                level = api_surface.get("risk_level", "LOW")
+                md += f"**API Exposure Score:** {score}/100 — **{level}**\n\n"
+
+            if api_bolas:
+                high_bola = [b for b in api_bolas if b.get("confidence") == "HIGH"]
+                md += f"**BOLA Indicators:** {len(api_bolas)} total ({len(high_bola)} high confidence)\n"
+
+            if api_bflas:
+                high_bfla = [b for b in api_bflas if b.get("confidence") == "HIGH"]
+                md += f"**BFLA Indicators:** {len(api_bflas)} total ({len(high_bfla)} high confidence)\n"
+
+            if api_mass:
+                high_ma = [m for m in api_mass if m.get("confidence") == "HIGH"]
+                md += f"**Mass Assignment Indicators:** {len(api_mass)} total ({len(high_ma)} high confidence)\n\n"
+
+            if api_opps:
+                md += "### API Opportunity Matrix\n\n| Score | Classification | Type | Title |\n| :--- | :--- | :--- | :--- |\n"
+                for opp in api_opps[:15]:
+                    md += f"| {opp.get('score', 0)} | **{opp.get('classification', 'LOW')}** | {opp.get('type', '')} | {opp.get('title', '')[:80]} |\n"
+                md += "\n"
+
+            if api_corrs:
+                md += "### API Correlations\n\n| Title | Score |\n| :--- | :--- |\n"
+                for corr in api_corrs[:10]:
+                    md += f"| {corr.get('title', '')} | {corr.get('score', 0)} |\n"
+                md += "\n"
+
+            if api_recs:
+                md += "### API Recommendations\n\n"
+                for i, rec in enumerate(api_recs, 1):
+                    md += f"{i}. {rec}\n"
+                md += "\n"
+
+            md += "---\n"
+
+        # 16. Next steps
         md += """
-## 15. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
+## 16. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
 
 1. **Fase de Mitigação:** Priorize a aplicação de patches e atualizações nas tecnologias que apresentarem CVEs de criticidade Crítica ou Alta.
 2. **Hardening de Rede:** Restrinja o acesso a portas administrativas expostas utilizando regras de firewall estritas.

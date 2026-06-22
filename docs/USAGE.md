@@ -152,3 +152,34 @@ ghostmirror bounty report --project <slug>
 ```
 
 See [BUG_BOUNTY_MODE.md](BUG_BOUNTY_MODE.md) for full documentation.
+
+## API Security Intelligence
+
+Non-destructive API analysis, classification, correlation, and scoring:
+
+```bash
+# Full API Security Intelligence analysis
+ghostmirror api --project <slug> --target https://example.com
+
+# Consolidated API inventory
+ghostmirror api inventory --project <slug>
+
+# GraphQL discovery and intelligence
+ghostmirror api graphql --project <slug>
+
+# JWT token analysis (redacted tokens, algorithms, claims)
+ghostmirror api jwt --project <slug>
+
+# OAuth/OIDC provider detection
+ghostmirror api oauth --project <slug>
+
+# API opportunity matrix
+ghostmirror api opportunities --project <slug>
+
+# Full analysis via analyze sub-app
+ghostmirror analyze api --project <slug> --target https://example.com
+```
+
+The API Security Intelligence engine operates on previously collected data (web intelligence, bug bounty, technology profile). Run `ghostmirror web` or a full pipeline scan first to populate the required profiles.
+
+See [API_SECURITY_INTELLIGENCE.md](API_SECURITY_INTELLIGENCE.md) for full documentation.

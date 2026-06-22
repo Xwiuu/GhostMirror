@@ -1,6 +1,6 @@
 # GhostMirror
 
-**Internal Pentest Automation Platform** — v1.0-alpha (Sprint 14.2)
+**Internal Pentest Automation Platform** — v1.0-alpha (Sprint 15)
 
 GhostMirror is an **internal** platform used exclusively by our software house for
 **authorized** security audits, attack-surface mapping, security assessments and
@@ -32,6 +32,7 @@ categories are disabled by default and must be opted into deliberately.
 - Multi-format report generation (HTML, Markdown, PDF) with module execution summary
 - **Lab Mode** — controlled vulnerable environments (Juice Shop, DVWA, WebGoat, Vuln Demo) for training and testing
 - **Bug Bounty Mode** — headless recon, JS analysis, API discovery, parameter mining, secrets detection, subdomain discovery, automated reporting
+- **API Security Intelligence** — non-destructive API analysis: inventory, Swagger/OpenAPI discovery, GraphQL detection, JWT intelligence, OAuth mapping, object mapping, BOLA/BFLA/Mass Assignment indicators, correlation engine, opportunity scoring, attack surface calculation
 - **Platform diagnostics**: `doctor`, `health-check`, `status`, `doctor --fix`
 - Rich progress dashboard with live-updating module table
 - User-friendly error handling (no Python tracebacks exposed)
@@ -246,6 +247,18 @@ ghostmirror bounty js --project <slug> --target https://example.com
 ghostmirror bounty apis --project <slug>
 ghostmirror bounty secrets --project <slug>
 ghostmirror bounty report --project <slug>
+```
+
+### API Security Intelligence commands
+
+```bash
+ghostmirror api --project <slug> --target https://example.com
+ghostmirror api inventory --project <slug>
+ghostmirror api graphql --project <slug>
+ghostmirror api jwt --project <slug>
+ghostmirror api oauth --project <slug>
+ghostmirror api opportunities --project <slug>
+ghostmirror analyze api --project <slug> --target https://example.com
 ```
 
 ### Non-interactive commands
