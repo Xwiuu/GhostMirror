@@ -33,5 +33,8 @@ fn test_cli_subcommands_present() {
 
     assert!(combined.contains("portscan"), "portscan subcommand missing");
     assert!(combined.contains("banner"), "banner subcommand missing");
-    assert!(combined.contains("fingerprint"), "fingerprint subcommand missing");
+    assert!(
+        combined.contains("fingerprint"),
+        "fingerprint subcommand missing"
+    );
 }

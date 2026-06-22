@@ -23,6 +23,7 @@ STEP_DEPENDENCIES: dict[str, list[str]] = {
     "bug_bounty": ["web_intelligence", "fingerprint"],
     "vulnerability_intelligence": ["cve_intelligence"],
     "finding_intelligence": ["vulnerability_intelligence"],
+    "api_security": ["web_intelligence"],
 }
 
 
@@ -322,6 +323,13 @@ class FullScanOrchestrator:
             engine = WebIntelligenceEngine()
             report = engine.analyze_project(self.project_path)
             findings_count = len(report.indicators) + len(report.opportunities)
+            return findings_count
+
+        elif step_name == "api_security":
+            from ghostmirror.modules.api_security.engine import APISecurityEngine
+            engine = APISecurityEngine()
+            report = engine.analyze_project(self.project_path)
+            findings_count = len(report.bola_indicators) + len(report.bfla_indicators) + len(report.mass_assignment_indicators) + len(report.opportunities)
             return findings_count
 
         elif step_name == "payloads":

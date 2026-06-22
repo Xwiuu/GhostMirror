@@ -152,3 +152,32 @@
 - BountyScopeGuard: rate-limited, depth-controlled scope enforcement
 - 153 unit tests (100% mocked, no real network/Playwright)
 - Documentation: `docs/BUG_BOUNTY_MODE.md`
+
+## Sprint 15 — API Security Intelligence
+- Full API security analysis pipeline with 21 modules orchestrated by `APISecurityEngine`
+- **API Inventory**: consolidate endpoints from web intelligence, bug bounty, JS bundles, network capture, and endpoint mapper with dedup
+- **Swagger/OpenAPI Discovery**: detect /swagger, /swagger-ui, /openapi.json, /api-docs, /docs
+- **OpenAPI Parser**: extract paths, methods, schemas, auth definitions, version
+- **GraphQL Discovery**: detect /graphql endpoints and frameworks (Apollo, Hasura, Graphene, Yoga)
+- **GraphQL Intelligence**: analyze introspection, playground, and graphiql exposure levels
+- **JWT Intelligence**: detect JWT tokens (redacted), parse header claims (alg, kid, typ), payload claims (iss, aud, exp), detect none algorithm and missing expiration
+- **OAuth/OIDC Intelligence**: detect providers (Keycloak, Auth0, Azure AD, Cognito, Okta, Google, GitHub), map endpoints (authorize, token, userinfo, jwks)
+- **Auth Intelligence**: combine JWT + OAuth into unified auth surface analysis
+- **Endpoint Classifier**: classify as API, admin, auth, payment, or GraphQL
+- **Object Mapper**: identify resources across 7 categories (User, Financial, Admin, Business, Content, Security, Config)
+- **Parameter Analyzer**: classify object reference parameters and sensitive parameters
+- **Rate Limit Intelligence**: detect RateLimit headers and classify as Unknown/Present/Strong/Weak
+- **BOLA Indicators**: generate hypotheses from endpoint + object + auth, confidence LOW/MEDIUM/HIGH
+- **BFLA Indicators**: detect admin/privileged API endpoints with action verbs
+- **Mass Assignment Indicators**: detect PUT/PATCH/POST on complex objects with sensitive fields
+- **Correlation Engine**: cross-reference JWT + Admin + Swagger + GraphQL + BOLA/BFLA for high-value surfaces
+- **Opportunity Scoring**: 0-100 scale with LOW/MEDIUM/HIGH/CRITICAL classifications
+- **Exposure Analysis**: calculate API Exposure Score (0-100) from 10 weighted factors
+- **Recommendations**: generate specific, actionable API security recommendations
+- **Findings Mapper**: map indicators to standard `FindingModel` for report integration
+- **Report Builder**: consolidate into `APISecurityReport` model
+- **CLI commands**: `ghostmirror api inventory|graphql|jwt|oauth|opportunities` + `ghostmirror analyze api`
+- **Pipeline integration**: api_security step in standard, deep, and bounty profiles
+- **Report integration**: API Security Intelligence section in HTML and Markdown reports
+- Documentation: `docs/API_SECURITY_INTELLIGENCE.md`
+- Updated README, CHANGELOG, USAGE, SPRINTS, ROADMAP

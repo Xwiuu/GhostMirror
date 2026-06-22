@@ -59,6 +59,16 @@ from ghostmirror.models.web_intelligence_report import (
 )
 from ghostmirror.models.web_attack_surface import WebAttackSurface, IndicatorSummary
 
+# API Security Intelligence models
+from ghostmirror.models.api_endpoint import APIEndpoint
+from ghostmirror.models.api_inventory_profile import APIInventoryProfile
+from ghostmirror.models.graphql_profile import GraphQLProfile
+from ghostmirror.models.jwt_profile import JWTProfile
+from ghostmirror.models.oauth_profile import OAuthProfile
+from ghostmirror.models.api_risk import APIRisk
+from ghostmirror.models.api_security_report import APISecurityReport
+from ghostmirror.models.api_attack_surface import APIAttackSurface
+
 __all__ = [
     "ProjectModel",
     "ProjectStatus",
@@ -120,5 +130,14 @@ __all__ = [
     "BusinessLogicArea",
     "WebAttackSurface",
     "IndicatorSummary",
+    # API Security Intelligence
+    "APIEndpoint",
+    "APIInventoryProfile",
+    "GraphQLProfile",
+    "JWTProfile",
+    "OAuthProfile",
+    "APIRisk",
+    "APISecurityReport",
+    "APIAttackSurface",
 ]
 

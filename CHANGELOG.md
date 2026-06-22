@@ -4,6 +4,34 @@ All notable changes to GhostMirror are documented here.
 
 ## v1.0-alpha — 2026-06-22
 
+### API Security Intelligence (Sprint 15)
+- New `APISecurityEngine` orchestrating 21-module API intelligence pipeline
+- **API Inventory**: multi-source consolidation (web intel, bug bounty, JS, network, endpoint mapper)
+- **Swagger/OpenAPI Discovery**: detect /swagger, /openapi.json, /api-docs, /docs
+- **OpenAPI Parser**: extract paths, methods, schemas, auth definitions
+- **GraphQL Discovery**: detect /graphql endpoints and frameworks (Apollo, Hasura, Graphene, Yoga)
+- **GraphQL Intelligence**: analyze introspection, playground, graphiql indicators
+- **JWT Intelligence**: detect JWT tokens (redacted), analyze alg/kid/typ/iss/aud/exp, detect weak algs
+- **OAuth/OIDC Intelligence**: detect providers (Keycloak, Auth0, Azure AD, Cognito, Okta, Google, GitHub)
+- **Auth Intelligence**: combine JWT + OAuth into unified auth surface
+- **Endpoint Classifier**: classify as API, admin, auth, payment, GraphQL
+- **Object Mapper**: identify resources (User, Financial, Admin, Business, Content, Security, Config)
+- **Parameter Analyzer**: classify object references and sensitive parameters
+- **Rate Limit Intelligence**: detect RateLimit headers and classify strength
+- **BOLA Indicators**: generate BOLA hypotheses from endpoints + objects + auth (LOW/MEDIUM/HIGH)
+- **BFLA Indicators**: detect BFLA opportunities in admin/privileged APIs
+- **Mass Assignment Indicators**: detect PUT/PATCH/POST on complex objects with sensitive fields
+- **Correlation Engine**: cross-reference JWT + Admin + Swagger + GraphQL + BOLA + BFLA
+- **Opportunity Scoring**: 0-100, classifications LOW/MEDIUM/HIGH/CRITICAL
+- **Report Builder**: APISecurityReport with all findings and recommendations
+- CLI group: `ghostmirror api inventory|graphql|jwt|oauth|opportunities` + `ghostmirror analyze api`
+- Pipeline integration: api_security step in standard, deep, and bounty profiles
+- Report integration: API Security Intelligence section in HTML and Markdown reports
+- Documentation: `docs/API_SECURITY_INTELLIGENCE.md`
+- Updated README, CHANGELOG, USAGE, SPRINTS, ROADMAP
+
+## v1.0-alpha — 2026-06-22
+
 ### Bug Bounty Mode (Sprint 14.2)
 - New `BugBountyEngine` orchestrating 9-module recon pipeline
 - **Headless Crawler**: Playwright-based crawling with XHR/fetch interception and form extraction

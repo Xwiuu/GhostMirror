@@ -2773,6 +2773,256 @@ def cmd_analyze_web(
     ctx.invoke(cmd_web_main, ctx=ctx, project=project, target=target)
 
 
+@analyze_app.command("api", help="API Security Intelligence — análise passiva de superfície de APIs.")
+def cmd_analyze_api(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+    target: str = typer.Option(None, "--target", "-t", help="URL alvo"),
+) -> None:
+    """Executa o API Security Intelligence Engine."""
+    ctx.invoke(cmd_api_main, ctx=ctx, project=project, target=target)
+
+
+# --------------------------------------------------------------------------- #
+# API Security Intelligence sub-app
+# --------------------------------------------------------------------------- #
+api_app = typer.Typer(help="API Security Intelligence: descoberta, análise e correlação de APIs.")
+app.add_typer(api_app, name="api")
+
+
+@api_app.callback(invoke_without_command=True)
+def cmd_api_main(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+    target: str = typer.Option(None, "--target", "-t", help="URL alvo para análise de APIs"),
+) -> None:
+    """Executa o API Security Intelligence Engine completo no projeto."""
+    app_ctx: AppContext = ctx.obj
+
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado. Por favor, crie um projeto primeiro.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+
+    try:
+        handle = app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    from ghostmirror.modules.api_security.engine import APISecurityEngine
+
+    engine = APISecurityEngine()
+    try:
+        with console.status("[bold green]Executando API Security Intelligence Engine...[/]"):
+            report = engine.analyze_project(handle.path, target_url=target)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante API Security Intelligence:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("API SECURITY INTELLIGENCE COMPLETE\n")
+    console.print(f"Target: {report.target}")
+    console.print(f"\nAPI Inventory: [bold]{report.api_inventory.get('total_endpoints', 0)}[/] endpoints")
+    console.print(f"Swagger/OpenAPI: {'[green]Detected[/]' if report.swagger_profile and report.swagger_profile.get('detected') else '[dim]Not detected[/]'}")
+    console.print(f"GraphQL: {'[green]Detected[/]' if report.graphql_profile and report.graphql_profile.get('detected') else '[dim]Not detected[/]'}")
+    console.print(f"JWT: {'[green]Detected[/]' if report.jwt_profile and report.jwt_profile.get('detected') else '[dim]Not detected[/]'}")
+    console.print(f"OAuth: {'[green]Detected[/]' if report.oauth_profile and report.oauth_profile.get('detected') else '[dim]Not detected[/]'}")
+    console.print(f"Objects Mapped: [bold]{len(report.object_inventory)}[/]")
+    console.print(f"\nBOLA Indicators: [bold]{len(report.bola_indicators)}[/]")
+    console.print(f"BFLA Indicators: [bold]{len(report.bfla_indicators)}[/]")
+    console.print(f"Mass Assignment: [bold]{len(report.mass_assignment_indicators)}[/]")
+    console.print(f"Opportunities: [bold]{len(report.opportunities)}[/]")
+    console.print(f"\nOverall Score: [bold]{report.overall_score}/100[/] — {report.risk_level}")
+
+    if report.recommendations:
+        console.print(f"\nTop Recommendations:")
+        for rec in report.recommendations[:5]:
+            console.print(f"  • {rec}")
+
+    console.print("\nSaved Profiles:")
+    console.print("  profiles/api_security/")
+    console.print("---")
+
+
+@api_app.command("inventory", help="Consolida o inventário de APIs descobertas por todas as fontes.")
+def cmd_api_inventory(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Exibe o inventário consolidado de APIs."""
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    from ghostmirror.modules.api_security.api_inventory import APIInventory
+    inventory = APIInventory()
+    profile = inventory.consolidate(handle.path)
+
+    table = Table(box=box.ROUNDED, header_style="bold cyan", title=f"API Inventory ({profile.total_endpoints})")
+    table.add_column("Method")
+    table.add_column("Path")
+    table.add_column("Auth")
+    table.add_column("Source")
+    table.add_column("Confidence")
+    for ep in profile.endpoints[:50]:
+        auth = "[green]Yes[/]" if ep.get("auth_required") else "[dim]No[/]"
+        table.add_row(
+            ep.get("method", "GET"),
+            ep.get("path", "")[:80],
+            auth,
+            ep.get("source", ""),
+            ep.get("confidence", ""),
+        )
+    console.print(table)
+    console.print(f"\nTotal: {profile.total_endpoints} endpoints")
+    console.print(f"Methods: {profile.total_methods}")
+    console.print(f"Sources: {profile.total_sources}")
+    console.print(f"Auth Required: {profile.auth_required_count}")
+
+
+@api_app.command("graphql", help="GraphQL Discovery — detecta endpoints e frameworks GraphQL.")
+def cmd_api_graphql(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Executa GraphQL Discovery e Intelligence."""
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    from ghostmirror.modules.api_security.engine import APISecurityEngine
+    engine = APISecurityEngine()
+    report = engine.analyze_project(handle.path)
+
+    if not report.graphql_profile or not report.graphql_profile.get("detected"):
+        console.print("[yellow]Nenhum endpoint GraphQL detectado.[/]")
+        return
+
+    gql = report.graphql_profile
+    console.print("---")
+    console.print("GRAPHQL DISCOVERY RESULTS\n")
+    console.print(f"Endpoints: {', '.join(gql.get('endpoints', []))}")
+    console.print(f"Frameworks: {', '.join(gql.get('frameworks', [])) or 'None'}")
+
+    intel = gql.get("intelligence", {})
+    if intel:
+        console.print(f"\nIntrospection: {'[red]Detected[/]' if intel.get('has_introspection') else '[green]Not detected[/]'}")
+        console.print(f"Playground: {'[red]Detected[/]' if intel.get('has_playground') else '[green]Not detected[/]'}")
+        console.print(f"GraphiQL: {'[red]Detected[/]' if intel.get('has_graphiql') else '[green]Not detected[/]'}")
+        console.print(f"Exposure Level: [bold]{intel.get('exposure_level', 'LOW')}[/]")
+
+
+@api_app.command("jwt", help="JWT Intelligence — detecta e analisa tokens JWT (redigido).")
+def cmd_api_jwt(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Executa JWT Intelligence."""
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    from ghostmirror.modules.api_security.engine import APISecurityEngine
+    engine = APISecurityEngine()
+    report = engine.analyze_project(handle.path)
+
+    if not report.jwt_profile or not report.jwt_profile.get("detected"):
+        console.print("[yellow]Nenhum token JWT detectado.[/]")
+        return
+
+    jwt = report.jwt_profile
+    console.print("---")
+    console.print("JWT INTELLIGENCE RESULTS\n")
+    console.print(f"Tokens Found: [bold]{jwt.get('total_tokens_found', 0)}[/]")
+    console.print(f"Algorithms: {', '.join(jwt.get('algorithms', [])) or 'None'}")
+    console.print(f"Has 'kid': {'Yes' if jwt.get('has_kid') else 'No'}")
+    console.print(f"Has 'exp': {'Yes' if jwt.get('has_exp') else '[red]No (missing)[/]'}")
+    if jwt.get("has_none_alg_indicator"):
+        console.print("[red]WARNING: 'none' algorithm detected![/]")
+    if jwt.get("weak_algorithms"):
+        console.print(f"[yellow]Weak algorithms: {', '.join(jwt['weak_algorithms'])}[/]")
+    if jwt.get("redacted_tokens"):
+        console.print("\nRedacted tokens (first 3):")
+        for t in jwt["redacted_tokens"][:3]:
+            console.print(f"  {t}")
+
+
+@api_app.command("oauth", help="OAuth/OIDC Intelligence — detecta provedores e endpoints de autorização.")
+def cmd_api_oauth(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Executa OAuth Intelligence."""
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+    from ghostmirror.modules.api_security.engine import APISecurityEngine
+    engine = APISecurityEngine()
+    report = engine.analyze_project(handle.path)
+
+    if not report.oauth_profile or not report.oauth_profile.get("detected"):
+        console.print("[yellow]Nenhum provedor OAuth/OIDC detectado.[/]")
+        return
+
+    oa = report.oauth_profile
+    console.print("---")
+    console.print("OAUTH/OIDC INTELLIGENCE RESULTS\n")
+    console.print(f"Providers: {', '.join(oa.get('providers', [])) or 'None'}")
+    console.print(f"Authorize Endpoint: {'Yes' if oa.get('has_authorize') else 'No'}")
+    console.print(f"Token Endpoint: {'Yes' if oa.get('has_token') else 'No'}")
+    console.print(f"UserInfo Endpoint: {'Yes' if oa.get('has_userinfo') else 'No'}")
+    console.print(f"JWKS Endpoint: {'Yes' if oa.get('has_jwks') else 'No'}")
+    endpoints = oa.get("endpoints", {})
+    for etype, epaths in endpoints.items():
+        console.print(f"\n{etype.upper()}:")
+        for p in epaths[:5]:
+            console.print(f"  {p}")
+
+
+@api_app.command("opportunities", help="Exibe a matriz de oportunidades de API Security.")
+def cmd_api_opportunities(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    """Exibe a API Opportunity Matrix."""
+    app_ctx: AppContext = ctx.obj
+    handle = _resolve_project(app_ctx, project)
+
+    import json
+    path = handle.path / "profiles" / "api_security" / "api_opportunities.json"
+    if not path.exists():
+        console.print("[yellow]Execute 'ghostmirror api' ou 'ghostmirror analyze api' primeiro.[/]")
+        raise typer.Exit(code=1)
+
+    with open(path, "r", encoding="utf-8") as f:
+        opportunities = json.load(f)
+
+    if not opportunities:
+        console.print("[yellow]Nenhuma oportunidade identificada.[/]")
+        return
+
+    table = Table(box=box.ROUNDED, header_style="bold cyan", title=f"API Opportunity Matrix ({len(opportunities)})")
+    table.add_column("Score", justify="right")
+    table.add_column("Classification")
+    table.add_column("Type")
+    table.add_column("Title")
+    for opp in opportunities[:20]:
+        score = opp.get("score", 0)
+        cls = opp.get("classification", "LOW")
+        color = "red" if cls == "CRITICAL" else "orange1" if cls == "HIGH" else "yellow" if cls == "MEDIUM" else "green"
+        table.add_row(
+            str(score),
+            f"[{color}]{cls}[/]",
+            opp.get("type", ""),
+            opp.get("title", "")[:80],
+        )
+    console.print(table)
+
+    critical = [o for o in opportunities if o.get("classification") == "CRITICAL"]
+    high = [o for o in opportunities if o.get("classification") == "HIGH"]
+    console.print(f"\nCritical: {len(critical)} | High: {len(high)} | Total: {len(opportunities)}")
+
+
 def _resolve_project(app_ctx: AppContext, project: str | None) -> ProjectHandle:
     """Helper to resolve a project slug or prompt the user."""
     if not project:

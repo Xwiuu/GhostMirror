@@ -23,7 +23,7 @@ class TestPlatformLogger:
 
     def test_get_current_user_env_fallback(self):
         with patch("getpass.getuser", side_effect=Exception("no user")):
-            with patch.dict("os.environ", {"USERNAME": "testuser"}):
+            with patch.dict("os.environ", {"USERNAME": "testuser"}, clear=True):
                 user = get_current_user()
                 assert user == "testuser"
 

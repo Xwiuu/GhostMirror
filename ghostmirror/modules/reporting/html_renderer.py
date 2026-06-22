@@ -1566,8 +1566,81 @@ class HTMLReportRenderer:
         html_template += """
         </div>
 
+        <!-- API SECURITY INTELLIGENCE -->
+        <h3 class="section-title">15. API Security Intelligence</h3>
+        <div class="card" style="text-align: left;">
+"""
+        api_report = collected_data["profiles"].get("api_security_report") or {}
+        api_inv = collected_data["profiles"].get("api_inventory") or {}
+        api_swagger = collected_data["profiles"].get("swagger_profile") or {}
+        api_graphql = collected_data["profiles"].get("graphql_profile") or {}
+        api_jwt = collected_data["profiles"].get("jwt_profile") or {}
+        api_oauth = collected_data["profiles"].get("oauth_profile") or {}
+        api_objects = collected_data["profiles"].get("object_inventory") or []
+        api_surface = collected_data["profiles"].get("api_attack_surface") or {}
+        api_opps = collected_data["profiles"].get("api_opportunities") or []
+        api_recs = collected_data["profiles"].get("api_recommendations") or []
+
+        if api_report:
+            html_template += f"""
+            <p>A API Security Intelligence Engine analisou passivamente a superfície de APIs, identificando endpoints, mecanismos de autenticação, objetos sensíveis e oportunidades de ataque.</p>
+
+            <table class="findings-table">
+                <tr><td><strong>Total Endpoints</strong></td><td>{api_inv.get('total_endpoints', 0)}</td></tr>
+                <tr><td><strong>Auth Required</strong></td><td>{api_inv.get('auth_required_count', 0)}</td></tr>
+                <tr><td><strong>Swagger/OpenAPI</strong></td><td>{'Detected at ' + ', '.join(api_swagger.get('found_paths', [])) if api_swagger.get('detected') else 'Not detected'}</td></tr>
+                <tr><td><strong>GraphQL</strong></td><td>{'Detected at ' + ', '.join(api_graphql.get('endpoints', [])) if api_graphql.get('detected') else 'Not detected'}</td></tr>
+                <tr><td><strong>JWT</strong></td><td>{'Detected (' + str(api_jwt.get('total_tokens_found', 0)) + ' tokens)' if api_jwt.get('detected') else 'Not detected'}</td></tr>
+                <tr><td><strong>OAuth</strong></td><td>{'Detected — ' + ', '.join(api_oauth.get('providers', [])) if api_oauth.get('detected') else 'Not detected'}</td></tr>
+                <tr><td><strong>Objects Mapped</strong></td><td>{len(api_objects)}</td></tr>
+                <tr><td><strong>Rate Limiting</strong></td><td>{api_surface.get('factors', {}).get('rate_limit_weakness', 'Unknown')}</td></tr>
+                <tr><td><strong>Exposure Score</strong></td><td><strong>{api_surface.get('exposure_score', 0)}/100</strong> — {api_surface.get('risk_level', 'LOW')}</td></tr>
+            </table>
+"""
+
+            if api_jwt.get("has_none_alg_indicator"):
+                html_template += '<p style="color: var(--severity-critical);">⚠ JWT "none" algorithm detected — allows arbitrary token forgery.</p>\n'
+            if not api_jwt.get("has_exp"):
+                html_template += '<p style="color: var(--severity-high);">⚠ JWT tokens missing expiration (exp claim).</p>\n'
+
+            if api_opps:
+                html_template += """
+            <h4>API Opportunity Matrix</h4>
+            <table class="findings-table">
+                <thead><tr><th>Score</th><th>Classification</th><th>Type</th><th>Title</th></tr></thead>
+                <tbody>
+"""
+                for opp in api_opps[:10]:
+                    cls = opp.get("classification", "LOW")
+                    color = "critical" if cls == "CRITICAL" else "high" if cls == "HIGH" else "medium" if cls == "MEDIUM" else "low"
+                    html_template += f"""                    <tr>
+                        <td>{opp.get('score', 0)}</td>
+                        <td><span class="severity-badge sev-{color}">{cls}</span></td>
+                        <td>{opp.get('type', '')}</td>
+                        <td>{opp.get('title', '')[:80]}</td>
+                    </tr>
+"""
+                html_template += """                </tbody>
+            </table>
+"""
+
+            if api_recs:
+                html_template += """            <h4>API Recommendations</h4>
+            <ul style="padding-left: 20px;">
+"""
+                for rec in api_recs[:10]:
+                    html_template += f'                <li style="margin-bottom: 8px;">{rec}</li>\n'
+                html_template += """            </ul>
+"""
+        else:
+            html_template += """            <p>API Security Intelligence data not available. Run <code>ghostmirror analyze api</code> or <code>ghostmirror api</code> to generate.</p>
+"""
+
+        html_template += """
+        </div>
+
         <!-- RECOMENDAÇÕES E PRÓXIMOS PASSOS -->
-        <h3 class="section-title">15. Recomendações e Próximos Passos</h3>
+        <h3 class="section-title">16. Recomendações e Próximos Passos</h3>
         <div class="card" style="text-align: left;">
             <ul style="padding-left: 20px;">
                 <li style="margin-bottom: 12px;"><strong>Fase de Mitigação:</strong> Revise as configurações de servidores web e aplique patches de segurança para as tecnologias identificadas com CVEs ativas.</li>

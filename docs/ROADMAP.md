@@ -40,7 +40,22 @@
 - Subdomain discovery, automated scoring & reporting
 - CLI: `ghostmirror bounty scan|crawl|js|apis|secrets|report`
 
-### Sprint 15 — Dashboard
+### Sprint 15 — API Security Intelligence ✅
+- Non-destructive API analysis pipeline (21 modules)
+- API Inventory consolidation from 5 sources
+- Swagger/OpenAPI discovery and parsing
+- GraphQL detection and intelligence (introspection, playground)
+- JWT intelligence with token redaction and weak-algorithm detection
+- OAuth/OIDC provider and endpoint mapping
+- Object mapping (User, Financial, Admin, Business, Content, Security, Config)
+- BOLA, BFLA, Mass Assignment indicator generation
+- Rate limiting intelligence
+- Correlation engine scoring and recommendations
+- CLI: `ghostmirror api inventory|graphql|jwt|oauth|opportunities`
+- Report integration (HTML/Markdown)
+- Pipeline integration (standard, deep, bounty profiles)
+
+### Sprint 16 — Dashboard *(planned)*
 - Web-based dashboard for real-time scan monitoring
 - Historical trend analysis and visual reports
 - Team collaboration features
