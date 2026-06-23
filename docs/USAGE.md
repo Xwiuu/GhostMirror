@@ -286,3 +286,33 @@ The Attack Chain Intelligence engine operates on all previously collected intell
 > **Attack chains are hypotheses for authorized manual review, not proof of compromise.**
 
 See [ATTACK_CHAIN_INTELLIGENCE.md](ATTACK_CHAIN_INTELLIGENCE.md) for full documentation.
+
+---
+
+### Pentester Assistant Engine
+
+Guidance copilot for authorized manual review:
+
+```bash
+# Run full assistant engine
+ghostmirror assistant run --project <slug>
+
+# View investigation priorities
+ghostmirror assistant priorities --project <slug>
+
+# View safe next steps
+ghostmirror assistant next-steps --project <slug>
+
+# View validation checklists
+ghostmirror assistant checklist --project <slug>
+
+# View investigative questions
+ghostmirror assistant questions --project <slug>
+
+# Via analyze sub-app
+ghostmirror analyze assistant --project <slug>
+```
+
+> **The Pentester Assistant provides guidance for authorized manual review only. It does not confirm exploitation or replace professional judgment.**
+
+See [PENTESTER_ASSISTANT_ENGINE.md](PENTESTER_ASSISTANT_ENGINE.md) for full documentation.

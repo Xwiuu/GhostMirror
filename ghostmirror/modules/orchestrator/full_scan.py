@@ -26,6 +26,7 @@ STEP_DEPENDENCIES: dict[str, list[str]] = {
     "api_security": ["web_intelligence"],
     "zero_day": ["web_intelligence", "api_security"],
     "attack_chain": ["zero_day", "finding_intelligence", "api_security", "bug_bounty", "web_intelligence"],
+    "pentester_assistant": ["attack_chain"],
 }
 
 
@@ -358,6 +359,12 @@ class FullScanOrchestrator:
             report = engine.analyze_project(self.project_path)
             findings_count = report.total_signals + report.total_chains
             return findings_count
+
+        elif step_name == "pentester_assistant":
+            from ghostmirror.modules.pentester_assistant.engine import PentesterAssistantEngine
+            engine = PentesterAssistantEngine()
+            report = engine.analyze_project(self.project_path, self.target)
+            return report.total_priorities + report.total_tasks + report.total_questions
 
         else:
             raise ValueError(f"Etapa de pipeline desconhecida: {step_name!r}")

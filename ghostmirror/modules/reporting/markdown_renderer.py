@@ -844,7 +844,46 @@ A API Security Intelligence Engine realizou uma análise passiva da superfície 
 
         # 17. Next steps
         md += """
-## 17. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
+## 17. PENTESTER ASSISTANT
+
+"""
+        assistant_report_data = collected_data["profiles"].get("assistant_report") or {}
+        if assistant_report_data:
+            md += f"> {assistant_report_data.get('safety_disclaimer', 'Guidance for authorized manual review only.')}\n\n"
+            md += f"{assistant_report_data.get('executive_summary', '')}\n\n"
+
+            a_priorities = assistant_report_data.get("priorities", [])
+            if a_priorities:
+                md += "### Investigation Priorities\n\n"
+                md += "| # | Title | Category | Severity | Confidence |\n| :--- | :--- | :--- | :--- | :--- |\n"
+                for p in a_priorities[:10]:
+                    md += f"| {p.get('rank', '')} | {p.get('title', '')[:50]} | {p.get('category', '')} | **{p.get('severity', '')}** | {p.get('confidence', '')} |\n"
+                md += "\n"
+
+            a_next = assistant_report_data.get("next_steps", [])
+            if a_next:
+                md += "### Next Steps\n\n"
+                for ns in a_next[:8]:
+                    md += f"- {ns}\n"
+                md += "\n"
+
+            a_risk = assistant_report_data.get("risk_narrative", "")
+            if a_risk:
+                md += f"### Risk Narrative\n\n{a_risk}\n\n"
+
+            a_questions = assistant_report_data.get("questions", [])
+            if a_questions:
+                md += "### Key Questions\n\n"
+                for q in a_questions[:8]:
+                    md += f"- **[{q.get('category', '')}]** {q.get('question', '')}\n"
+                md += "\n"
+        else:
+            md += "*Pentester Assistant data not available. Run `ghostmirror assistant run` to generate.*\n\n"
+
+        md += "---\n\n"
+
+        md += """
+## 18. RECOMENDAÇÕES GERAIS E PRÓXIMOS PASSOS
 
 1. **Fase de Mitigação:** Priorize a aplicação de patches e atualizações nas tecnologias que apresentarem CVEs de criticidade Crítica ou Alta.
 2. **Hardening de Rede:** Restrinja o acesso a portas administrativas expostas utilizando regras de firewall estritas.

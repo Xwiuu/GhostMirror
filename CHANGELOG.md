@@ -4,6 +4,28 @@ All notable changes to GhostMirror are documented here.
 
 ## v1.0-alpha — 2026-06-22
 
+### Pentester Assistant Engine (Sprint 20)
+- New `PentesterAssistantEngine` — guidance copilot for authorized manual review
+- **7 Pydantic models**: AssistantContext, AssistantPriorities, InvestigationTask, InvestigationPlan, ValidationChecklist, PentestQuestion, AssistantRecommendation, AssistantReport
+- **14 sub-modules**: context_loader, triage_engine, next_steps_engine, investigation_planner, validation_checklists, evidence_reasoner, question_generator, risk_narrative, findings_mapper, recommendations, report_builder, hackerone_integration
+- **Context Loader**: consumes 14+ intelligence sources (enriched findings, CVE, attack chains, zero-day, API, web, bug bounty, scanner findings)
+- **Triage Engine**: composite scoring by severity, priority, confidence, attack chain score, KEV, EPSS, exploitability, business impact
+- **Next Steps Engine**: safe, non-destructive investigation steps with deny-list enforcement
+- **Investigation Planner**: 8 task types (Web App, API Security, Auth, Business Logic, CVE, Attack Chain, Zero-Day, Bug Bounty)
+- **Validation Checklists**: BOLA, XSS, CVE, Zero-Day, Auth, API, Injection, Web Security
+- **Evidence Reasoner**: WHY each recommendation exists with evidence references
+- **Question Generator**: investigative questions mapped to finding categories
+- **Risk Narrative**: executive narrative summarizing highest-risk areas
+- **HackerOne Integration**: submission guidance, validation steps, confidence assessment
+- **Zero-Day Safety**: hypotheses labeled "research opportunity" only, never "confirmed"
+- **Safety Rules**: deny brute force, bypass, DoS, dump, destructive actions, unauthorized access
+- CLI: `ghostmirror assistant run|priorities|next-steps|checklist|questions`
+- CLI: `ghostmirror analyze assistant`
+- Pipeline: `pentester_assistant` step in standard, deep, bounty profiles
+- Reporting: Pentester Assistant section in HTML and Markdown reports
+- 118 tests covering all sub-engines, CLI, pipeline integration, safety rules, edge cases
+- Documentation: `docs/PENTESTER_ASSISTANT_ENGINE.md`
+
 ### Zero-Day Hypothesis Engine (Sprint 16)
 ### HackerOne Style Reporting (Sprint 17)
 - New `HackerOneReportingEngine` orchestrating 14-module bounty submission pipeline

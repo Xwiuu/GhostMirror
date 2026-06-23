@@ -26,6 +26,7 @@ PIPELINE_PROFILES: dict[str, list[str]] = {
         "api_security",
         "zero_day",
         "attack_chain",
+        "pentester_assistant",
         "report",
     ],
     "deep": [
@@ -43,6 +44,7 @@ PIPELINE_PROFILES: dict[str, list[str]] = {
         "api_security",
         "zero_day",
         "attack_chain",
+        "pentester_assistant",
         "report",
     ],
     "bounty": [
@@ -59,6 +61,7 @@ PIPELINE_PROFILES: dict[str, list[str]] = {
         "api_security",
         "zero_day",
         "attack_chain",
+        "pentester_assistant",
         "report",
     ],
 }

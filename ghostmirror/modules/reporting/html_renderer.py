@@ -1685,6 +1685,66 @@ class HTMLReportRenderer:
         html_template += """
         </div>
 
+        <!-- PENTESTER ASSISTANT -->
+        <h3 class="section-title">15. Pentester Assistant</h3>
+        <div class="card" style="text-align: left;">
+"""
+        assistant_report = collected_data["profiles"].get("assistant_report") or {}
+        if assistant_report:
+            html_template += f"""
+            <p style="font-style: italic; color: var(--text-muted); margin-bottom: 15px;">
+                {assistant_report.get('safety_disclaimer', 'Guidance for authorized manual review only.')}
+            </p>
+            <p>{assistant_report.get('executive_summary', '')}</p>
+"""
+            priorities_list = assistant_report.get("priorities", [])
+            if priorities_list:
+                html_template += """
+            <h4>Top Investigation Priorities</h4>
+            <table class="findings-table">
+                <thead><tr><th>#</th><th>Title</th><th>Category</th><th>Severity</th><th>Confidence</th></tr></thead>
+                <tbody>
+"""
+                for p in priorities_list[:10]:
+                    sev = p.get("severity", "INFO").lower()
+                    color = "critical" if sev == "critical" else "high" if sev == "high" else "medium" if sev == "medium" else "low"
+                    html_template += f"""                    <tr>
+                        <td>{p.get('rank', '')}</td>
+                        <td>{p.get('title', '')[:60]}</td>
+                        <td>{p.get('category', '')}</td>
+                        <td><span class="severity-badge sev-{color}">{p.get('severity', '')}</span></td>
+                        <td>{p.get('confidence', '')}</td>
+                    </tr>"""
+                html_template += """                </tbody>
+            </table>"""
+
+            next_steps_list = assistant_report.get("next_steps", [])
+            if next_steps_list:
+                html_template += """            <h4>Next Steps</h4>
+            <ul style="padding-left: 20px;">"""
+                for ns in next_steps_list[:8]:
+                    html_template += f'\n                <li style="margin-bottom: 6px;">{ns}</li>'
+                html_template += "\n            </ul>"
+
+            risk_narrative = assistant_report.get("risk_narrative", "")
+            if risk_narrative:
+                html_template += f"""
+            <h4>Risk Narrative</h4>
+            <p style="color: var(--text-muted);">{risk_narrative}</p>"""
+
+            questions_list = assistant_report.get("questions", [])
+            if questions_list:
+                html_template += """            <h4>Key Questions</h4>
+            <ul style="padding-left: 20px;">"""
+                for q in questions_list[:8]:
+                    html_template += f'\n                <li style="margin-bottom: 6px;"><strong>[{q.get("category", "")}]</strong> {q.get("question", "")}</li>'
+                html_template += "\n            </ul>"
+        else:
+            html_template += '<p>Pentester Assistant data not available. Run <code>ghostmirror assistant run</code> to generate.</p>'
+
+        html_template += """
+        </div>
+
         <!-- RECOMENDAÇÕES E PRÓXIMOS PASSOS -->
         <h3 class="section-title">16. Recomendações e Próximos Passos</h3>
         <div class="card" style="text-align: left;">

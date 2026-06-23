@@ -80,6 +80,14 @@
 - CLI: `ghostmirror attack-chain run|graph|top|report`, `ghostmirror analyze attack-chain`
 - Documentation: `docs/ATTACK_CHAIN_INTELLIGENCE.md`
 
+### Sprint 20 — Pentester Assistant Engine ✅
+- Guidance copilot for authorized manual review
+- 14 sub-modules: context loader, triage, next steps, investigation planner, checklists, evidence reasoner, questions, risk narrative, recommendations, HackerOne integration, findings mapper, report builder
+- 7 Pydantic models, safety deny-list enforcement, zero-day safe handling
+- CLI: `ghostmirror assistant run|priorities|next-steps|checklist|questions`
+- Pipeline integration (standard, deep, bounty profiles)
+- 118 tests, documentation: `docs/PENTESTER_ASSISTANT_ENGINE.md`
+
 - Web-based dashboard for real-time scan monitoring
 - Historical trend analysis and visual reports
 - Team collaboration features

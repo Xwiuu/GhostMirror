@@ -84,6 +84,22 @@ from ghostmirror.models.attack_chain_path import AttackChainPath
 from ghostmirror.models.attack_chain_report import AttackChainReport
 from ghostmirror.models.attack_chain_priority import AttackChainPriority
 
+# Pentester Assistant models
+from ghostmirror.models.assistant_context import AssistantContext
+from ghostmirror.models.assistant_priority import AssistantPriorities, InvestigationPriority
+from ghostmirror.models.investigation_task import InvestigationTask, InvestigationPlan
+from ghostmirror.models.validation_checklist import (
+    AssistantChecklists,
+    ChecklistItem,
+    ValidationChecklist,
+)
+from ghostmirror.models.pentest_question import AssistantQuestions, PentestQuestion
+from ghostmirror.models.assistant_recommendation import (
+    AssistantRecommendation,
+    AssistantRecommendations,
+)
+from ghostmirror.models.assistant_report import AssistantReport, SAFETY_DISCLAIMER
+
 __all__ = [
     "ProjectModel",
     "ProjectStatus",
@@ -171,4 +187,19 @@ __all__ = [
     "AttackChainPath",
     "AttackChainReport",
     "AttackChainPriority",
+    # Pentester Assistant
+    "AssistantContext",
+    "AssistantPriorities",
+    "InvestigationPriority",
+    "InvestigationTask",
+    "InvestigationPlan",
+    "AssistantChecklists",
+    "ChecklistItem",
+    "ValidationChecklist",
+    "AssistantQuestions",
+    "PentestQuestion",
+    "AssistantRecommendation",
+    "AssistantRecommendations",
+    "AssistantReport",
+    "SAFETY_DISCLAIMER",
 ]

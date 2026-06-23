@@ -4838,6 +4838,225 @@ def cmd_analyze_findings(
     console.print("---")
 
 
+# --------------------------------------------------------------------------- #
+# Pentester Assistant Engine
+# --------------------------------------------------------------------------- #
+assistant_app = typer.Typer(help="Pentester Assistant Engine — guia de investigação manual autorizada.")
+app.add_typer(assistant_app, name="assistant")
+
+
+def _resolve_project(app_ctx: AppContext, project: str | None) -> str:
+    """Resolve project slug interactively or return the provided one."""
+    if not project:
+        handles = app_ctx.projects.list_projects()
+        if not handles:
+            console.print("[bold red]Nenhum projeto encontrado.[/]")
+            raise typer.Exit(code=1)
+        _render_projects_table(handles)
+        project = Prompt.ask("Selecione o projeto pelo slug").strip()
+        if not project:
+            console.print("[bold red]Slug do projeto obrigatório.[/]")
+            raise typer.Exit(code=1)
+    return project
+
+
+def _open_project_handle(app_ctx: AppContext, project: str):
+    """Open project and return handle, or exit on error."""
+    try:
+        return app_ctx.projects.open_project(project)
+    except Exception as exc:
+        console.print(f"[bold red]Erro ao abrir o projeto:[/] {exc}")
+        raise typer.Exit(code=1)
+
+
+@assistant_app.command("run", help="Executa o Pentester Assistant Engine completo.")
+def cmd_assistant_run(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+    target: str = typer.Option(None, "--target", "-t", help="Target URL"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    project = _resolve_project(app_ctx, project)
+    handle = _open_project_handle(app_ctx, project)
+
+    from ghostmirror.modules.pentester_assistant.engine import PentesterAssistantEngine
+
+    engine = PentesterAssistantEngine()
+    try:
+        with console.status("[bold green]Executando Pentester Assistant Engine..."):
+            report = engine.analyze_project(handle.path, target)
+    except Exception as exc:
+        console.print(f"[bold red]Erro durante Pentester Assistant:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("PENTESTER ASSISTANT — COMPLETE\n")
+    console.print(f"[bold]{report.total_priorities}[/] investigation priorities identified")
+    console.print(f"[bold]{report.total_tasks}[/] investigation tasks created")
+    console.print(f"[bold]{report.total_checklists}[/] validation checklists generated")
+    console.print(f"[bold]{report.total_questions}[/] investigative questions generated")
+    console.print(f"\n[bold]Risk Narrative:[/]")
+    console.print(f"  {report.risk_narrative[:200]}...")
+    console.print(f"\nProfiles saved to: profiles/assistant/")
+    console.print(f"Reports saved to: reports/assistant_report.md, reports/assistant_report.html")
+    console.print("---")
+
+
+@assistant_app.command("priorities", help="Exibe prioridades de investigação.")
+def cmd_assistant_priorities(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    project = _resolve_project(app_ctx, project)
+    handle = _open_project_handle(app_ctx, project)
+
+    import json
+    path = handle.path / "profiles" / "assistant" / "assistant_priorities.json"
+    if not path.exists():
+        console.print("[yellow]Priorities not found. Run 'assistant run' first.[/]")
+        raise typer.Exit(code=1)
+
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    priorities = data.get("priorities", [])
+    console.print("---")
+    console.print(f"INVESTIGATION PRIORITIES — {len(priorities)} total\n")
+
+    table = Table(box=box.ROUNDED, header_style="bold cyan", title="Priorities")
+    table.add_column("#")
+    table.add_column("Title", max_width=40)
+    table.add_column("Category")
+    table.add_column("Severity")
+    table.add_column("Confidence")
+    for p in priorities[:15]:
+        sev = p.get("severity", "INFO")
+        color = "red" if sev == "CRITICAL" else "orange1" if sev == "HIGH" else "yellow" if sev == "MEDIUM" else "green"
+        table.add_row(
+            str(p.get("rank", "")),
+            p.get("title", "")[:40],
+            p.get("category", ""),
+            f"[{color}]{sev}[/]",
+            p.get("confidence", ""),
+        )
+    console.print(table)
+    console.print("---")
+
+
+@assistant_app.command("next-steps", help="Exibe próximos passos seguros.")
+def cmd_assistant_next_steps(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    project = _resolve_project(app_ctx, project)
+    handle = _open_project_handle(app_ctx, project)
+
+    import json
+    path = handle.path / "profiles" / "assistant" / "assistant_report.json"
+    if not path.exists():
+        console.print("[yellow]Report not found. Run 'assistant run' first.[/]")
+        raise typer.Exit(code=1)
+
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    next_steps = data.get("next_steps", [])
+    console.print("---")
+    console.print("SAFE NEXT STEPS\n")
+    for ns in next_steps:
+        console.print(f"  {ns}")
+    console.print(f"\n[bold]{len(next_steps)}[/] safe steps identified.")
+    console.print("---")
+
+
+@assistant_app.command("checklist", help="Exibe checklists de validação.")
+def cmd_assistant_checklist(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    project = _resolve_project(app_ctx, project)
+    handle = _open_project_handle(app_ctx, project)
+
+    import json
+    path = handle.path / "profiles" / "assistant" / "assistant_report.json"
+    if not path.exists():
+        console.print("[yellow]Report not found. Run 'assistant run' first.[/]")
+        raise typer.Exit(code=1)
+
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    checklists = data.get("validation_checklists", [])
+    console.print("---")
+    console.print(f"VALIDATION CHECKLISTS — {len(checklists)} checklists\n")
+    for cl in checklists:
+        console.print(f"[bold cyan]{cl.get('title', '')}[/]")
+        for item in cl.get("items", []):
+            safety = f" [dim]({item.get('safety_note', '')})[/]" if item.get("safety_note") else ""
+            console.print(f"  {item.get('step', '')}. {item.get('instruction', '')}{safety}")
+        console.print()
+    console.print("---")
+
+
+@assistant_app.command("questions", help="Exibe perguntas investigativas.")
+def cmd_assistant_questions(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    project = _resolve_project(app_ctx, project)
+    handle = _open_project_handle(app_ctx, project)
+
+    import json
+    path = handle.path / "profiles" / "assistant" / "assistant_report.json"
+    if not path.exists():
+        console.print("[yellow]Report not found. Run 'assistant run' first.[/]")
+        raise typer.Exit(code=1)
+
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    questions = data.get("questions", [])
+    console.print("---")
+    console.print(f"INVESTIGATIVE QUESTIONS — {len(questions)} total\n")
+    for q in questions[:15]:
+        console.print(f"  [bold cyan][{q.get('category', '')}][/]{q.get('question', '')}")
+    console.print("---")
+
+
+@analyze_app.command("assistant", help="Pentester Assistant Engine — análise de contexto e prioridades.")
+def cmd_analyze_assistant(
+    ctx: typer.Context,
+    project: str = typer.Option(None, "--project", "-p", help="Slug do projeto"),
+    target: str = typer.Option(None, "--target", "-t", help="Target URL"),
+) -> None:
+    app_ctx: AppContext = ctx.obj
+    project = _resolve_project(app_ctx, project)
+    handle = _open_project_handle(app_ctx, project)
+
+    from ghostmirror.modules.pentester_assistant.engine import PentesterAssistantEngine
+
+    engine = PentesterAssistantEngine()
+    try:
+        with console.status("[bold green]Executando Pentester Assistant Engine..."):
+            report = engine.analyze_project(handle.path, target)
+    except Exception as exc:
+        console.print(f"[bold red]Erro:[/] {exc}")
+        raise typer.Exit(code=1)
+
+    console.print("---")
+    console.print("PENTESTER ASSISTANT — COMPLETE\n")
+    console.print(f"Priorities: [bold]{report.total_priorities}[/]")
+    console.print(f"Tasks: [bold]{report.total_tasks}[/]")
+    console.print(f"Checklists: [bold]{report.total_checklists}[/]")
+    console.print(f"Questions: [bold]{report.total_questions}[/]")
+    console.print(f"\nRisk: {report.risk_narrative[:150]}...")
+    console.print("---")
+
+
 @lab_app.command("benchmark", help="Executa benchmark completo (full-scan deep) em um laboratório.")
 def cmd_lab_benchmark(
     lab_id: str = typer.Argument(..., help="ID do laboratório (ex: juice-shop)"),

@@ -230,3 +230,24 @@
 - Full pipeline integration (standard, deep, bounty profiles)
 - CLI: `ghostmirror attack-chain run|graph|top|report`, `ghostmirror analyze attack-chain`
 - Documentation: `docs/ATTACK_CHAIN_INTELLIGENCE.md`
+
+## Sprint 20 — Pentester Assistant Engine
+- New `PentesterAssistantEngine` — guidance copilot for authorized manual review
+- **7 Pydantic models**: AssistantContext, AssistantPriorities, InvestigationTask, InvestigationPlan, ValidationChecklist, PentestQuestion, AssistantRecommendation, AssistantReport
+- **14 sub-modules**: context_loader, triage_engine, next_steps_engine, investigation_planner, validation_checklists, evidence_reasoner, question_generator, risk_narrative, findings_mapper, recommendations, report_builder, hackerone_integration
+- **Context Loader**: consumes 14+ intelligence sources
+- **Triage Engine**: composite scoring by severity, priority, confidence, attack chain score, KEV, EPSS, exploitability, business impact
+- **Next Steps Engine**: safe, non-destructive steps with deny-list enforcement
+- **Investigation Planner**: 8 task types
+- **Validation Checklists**: BOLA, XSS, CVE, Zero-Day, Auth, API, Injection, Web Security
+- **Evidence Reasoner**: WHY each recommendation exists
+- **Question Generator**: investigative questions mapped to categories
+- **Risk Narrative**: executive risk narrative
+- **HackerOne Integration**: submission guidance, validation steps, confidence assessment
+- **Safety Rules**: deny brute force, bypass, DoS, dump, destructive actions, unauthorized access
+- CLI: `ghostmirror assistant run|priorities|next-steps|checklist|questions`
+- CLI: `ghostmirror analyze assistant`
+- Pipeline: `pentester_assistant` step in standard, deep, bounty profiles
+- Reporting: Pentester Assistant section in HTML and Markdown reports
+- 118 tests covering all sub-engines, CLI, pipeline integration, safety rules
+- Documentation: `docs/PENTESTER_ASSISTANT_ENGINE.md`

@@ -35,6 +35,7 @@ categories are disabled by default and must be opted into deliberately.
 - **API Security Intelligence** — non-destructive API analysis: inventory, Swagger/OpenAPI discovery, GraphQL detection, JWT intelligence, OAuth mapping, object mapping, BOLA/BFLA/Mass Assignment indicators, correlation engine, opportunity scoring, attack surface calculation
 - **Zero-Day Hypothesis Engine** — anomaly detection, differential analysis, hidden functionality discovery, business logic mapping, attack chain correlation, structured hypothesis generation with confidence scoring, prioritized research queue
 - **Attack Chain Intelligence** — transforms isolated signals into prioritized, comprehensible attack chains: signal collection from 10+ modules, attack graph construction, 10 chain templates, scoring (0-100), prioritization, business/technical impact analysis, evidence linking, defensive recommendations, CLI and pipeline integration
+- **Pentester Assistant Engine** — guidance copilot for authorized manual review: context loading from 14+ intelligence sources, triage with composite scoring, safe next steps, investigation planning, validation checklists, evidence reasoning, investigative questions, executive risk narrative, HackerOne submission guidance, zero-day safe handling, safety deny-list enforcement
 - **Platform diagnostics**: `doctor`, `health-check`, `status`, `doctor --fix`
 - Rich progress dashboard with live-updating module table
 - User-friendly error handling (no Python tracebacks exposed)

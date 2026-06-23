@@ -269,6 +269,13 @@ class ReportCollector:
                 "bounty_report": self._load_json_dict(
                     Path("reports") / "bounty" / "bounty_report.json"
                 ),
+                # Pentester Assistant
+                "assistant_report": self._load_json_dict(
+                    self.profiles_dir / "assistant" / "assistant_report.json"
+                ),
+                "assistant_priorities": self._load_json_dict(
+                    self.profiles_dir / "assistant" / "assistant_priorities.json"
+                ),
             },
         }
 
