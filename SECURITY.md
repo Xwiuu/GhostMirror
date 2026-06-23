@@ -2,45 +2,52 @@
 
 ## Authorized Use Only
 
-GhostMirror is an **internal pentest automation platform**. It is **not** a public
-tool and must **only** be used against systems and assets covered by a formally
-authorized engagement scope.
+GhostMirror is an **offensive security intelligence platform**. It must **only** be used against systems and assets you own or have explicit written authorization to test.
 
-- **Never** use GhostMirror against systems you do not own or have explicit
-  written permission to test.
+Unauthorized use of GhostMirror, or any tool within it, to access, scan, or attack systems without permission is **illegal** and violates this policy.
+
+- **Never** use GhostMirror against systems you do not own or have explicit written permission to test.
 - **Never** use GhostMirror for illegal, unauthorized, or malicious purposes.
-- Each engagement must have a clearly defined `scope.yaml` that enumerates
-  permitted targets and test categories. Intrusive categories are disabled by
-  default.
+- **Never** brute force, DoS, credential stuffing, data exfiltration, or any destructive action without explicit scope authorization.
 
-## Reporting a Vulnerability
+## Scope Rules
 
-If you discover a security vulnerability in GhostMirror itself (e.g. a bug that
-could lead to unintended data exposure or escalation):
-
-1. **Do not** open a public GitHub Issue.
-2. Send details to the internal security team.
-3. Allow reasonable time for remediation before any disclosure.
-
-## Disclosure Policy
-
-- **Do not** paste real client reports, scan outputs, findings, or evidence into
-  public issues, pull requests, or discussions.
-- Test data used in public contexts must be anonymized (e.g. `example.com`,
-  `test.local`).
-- Screenshots or logs containing real target IPs, domains, or vulnerabilities
-  must be redacted before sharing.
-
-## Scope Enforcement
-
-GhostMirror enforces scope at runtime via `ScopeGuard`:
-
-- Targets not listed in `scope.yaml` are **blocked** from scanning.
-- The scope file is validated by Pydantic before every scan.
+- Every project requires a validated `scope.yaml` enumerating permitted targets and test categories.
+- Intrusive and destructive categories are disabled by default and must be explicitly opted into.
+- Targets not listed in scope are **blocked** at runtime by `ScopeGuard`.
 - Out-of-scope attempts are logged to the audit trail.
 
-## Data Retention
+## Prohibited Usage
 
-- Scan findings are stored per-project under `projects/<slug>/`.
-- Logs are rotated and retained according to local policy.
-- No telemetry, analytics, or external data exfiltration occurs.
+The following are strictly prohibited:
+
+- Attacking third-party systems without authorization
+- Brute force attacks
+- Denial of Service (DoS) attacks
+- Credential stuffing
+- Unauthorized access to any system or data
+- Data exfiltration
+- Any activity that violates applicable laws
+
+## Vulnerability Reporting
+
+If you discover a security vulnerability in GhostMirror itself (a bug that could lead to unintended data exposure, privilege escalation, or code execution):
+
+1. **Do not** open a public GitHub Issue.
+2. Open a **private security advisory** on GitHub or contact the maintainers directly.
+3. Allow reasonable time for remediation before any disclosure.
+
+## Safe Disclosure
+
+- **Do not** paste real client reports, scan outputs, findings, or evidence into public issues, pull requests, or discussions.
+- Test data used in public contexts must be anonymized (e.g. `example.com`, `test.local`).
+- Screenshots or logs containing real target IPs, domains, or vulnerabilities must be redacted before sharing.
+
+## No Warranty
+
+GhostMirror is provided "AS IS", without warranty of any kind. The user assumes all responsibility for compliance with applicable laws and for any consequences of using this platform.
+
+## Contact
+
+To report a security issue, open a **private security advisory** on GitHub at:
+https://github.com/your-org/ghostmirror/security/advisories/new
